@@ -1,7 +1,6 @@
 
 <?php 
 
-session_start();
 require 'auth_admin.php';
 require '../config.php'; // include your PDO connection
 
