@@ -3,7 +3,7 @@
 
 
 require 'auth_admin.php';
-require '../config.php'; // include your PDO connection
+require '../db_connect.php'; // include your PDO connection
 
 ?>
 
