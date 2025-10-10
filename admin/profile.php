@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $last_name = $_POST['last_name'];
 
         $stmt = $pdo->prepare("UPDATE user_table SET username=?, email=?, first_name=?, last_name=? WHERE user_id=?");
-        $stmt->execute([$username, $email, $first_name, $last_name, $admin_id]);
+        $stmt->execute([$username, $email, $first_name, $last_name, $user_id]);
         header("Location: profile.php");
         exit;
     }
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $occupation = $_POST['occupation'];
 
         $stmt = $pdo->prepare("UPDATE user_table SET date_of_birth=?, phone=?, address=?, NRC=?, gender=?, occupation=? WHERE user_id=?");
-        $stmt->execute([$date_of_birth, $phone, $address, $NRC, $gender, $occupation, $admin_id]);
+        $stmt->execute([$date_of_birth, $phone, $address, $NRC, $gender, $occupation, $user_id]);
         header("Location: profile.php");
         exit;
     }
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($new_password === $confirm_password) {
             $stmt = $pdo->prepare("UPDATE admins SET password=?, reset_phrase=? WHERE user_id=?");
-            $stmt->execute([$new_password, $reset_phrase, $admin_id]);
+            $stmt->execute([$new_password, $reset_phrase, $user_id]);
             header("Location: profile.php");
             exit;
         } else {
