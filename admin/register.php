@@ -1,3 +1,8 @@
+<?php
+require 'auth_admin.php';
+require '../db_connect.php'; // include your PDO connection
+
+?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
 
@@ -15,11 +20,11 @@
 <body class="bg-gradient-primary" style="background: var(--bs-gray-100);">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-9 col-lg-12 col-xl-10 flex-column justify-content-center" style="width: 517px;">
+            <div class="col-md-9 col-lg-12 col-xl-12 flex-column justify-content-center" style="margin-top:100px;width: 517px;">
                 <div class="card shadow-lg my-5 o-hidden border-0">
                     <div class="card-body p-0">
                         <div class="row justify-content-center">
-                            <div class="col-auto col-sm-auto col-md-5 col-lg-8 col-xl-9 text-center">
+                            <div class="col-auto col-sm-auto col-md-5 col-lg-8 col-xl-12 text-center">
                                 <div class="p-5"><img src="assets/img/white%20logo.png" width="79" height="81">
                                     <div class="text-center">
                                         <h5 class="text-dark mb-4">Welcome</h5>
