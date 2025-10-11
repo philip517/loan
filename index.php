@@ -2,6 +2,26 @@
 session_start();
 require 'db_connect.php'; // include your PDO connection
 require 'route.php';
+
+// Destroy any active session to ensure a clean login
+if (isset($_SESSION['user_id'])) {
+    // Unset all session variables
+    $_SESSION = [];
+
+    // Destroy the session cookie
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+
+    // Finally destroy the session
+    session_destroy();
+}
+require 'db_connect.php'; // include your PDO connection
+require 'route.php';
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">

@@ -179,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <li class="nav-item dropdown no-arrow">
                             <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="d-none d-lg-inline me-2 text-gray-600 small">Valerie Luna</span><img class="border rounded-circle img-profile" src="assets/img/avatars/avatar1.jpeg" width="32" height="32"></a>
                                 <div class="dropdown-menu shadow dropdown-menu-end animated--grow-in"><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Profile</a><a class="dropdown-item" href="message.php"><i class="fas fa-envelope me-2 fa-sm fa-fw text-gray-400" style="font-size: 12px;"></i>&nbsp;Messages</a><a class="dropdown-item" href="table.php"><i class="fas fa-list me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Clients</a>
-                                    <div class="dropdown-divider"></div><a class="dropdown-item" href="#modal-1" data-bs-target="#modal-1" data-bs-toggle="modal"><i class="fas fa-sign-out-alt me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Logout</a>
+                                    <div class="dropdown-divider"></div><a class="dropdown-item" href="../index.php"  ><i class="fas fa-sign-out-alt me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Logout</a>
                                 </div>
                             </div>
                         </li>
@@ -253,8 +253,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <div class="col">
                                             <label class="form-label" for="gender"><strong>Gender</strong></label>
                                             <select class="form-select form-control-user" name="gender">
-                                                <option value="male" <?= ($admin['gender'] ?? '') === 'male' ? 'selected' : '' ?>>Male</option>
-                                                <option value="female" <?= ($admin['gender'] ?? '') === 'female' ? 'selected' : '' ?>>Female</option>
+                                                <option value="male" <?= ($admin['gender'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
+                                                <option value="female" <?= ($admin['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
                                             </select>
                                         </div>
                                         <div class="col">

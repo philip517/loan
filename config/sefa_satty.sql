@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 09, 2025 at 02:32 PM
+-- Generation Time: Oct 11, 2025 at 01:36 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -117,9 +117,12 @@ CREATE TABLE `user_table` (
   `user_id` int(11) NOT NULL,
   `first_name` varchar(100) NOT NULL,
   `last_name` varchar(100) NOT NULL,
+  `username` varchar(100) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
+  `NRC` text NOT NULL,
   `gender` enum('Male','Female','Other') DEFAULT 'Other',
-  `dob` date DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `address` varchar(100) NOT NULL,
   `occupation` varchar(100) DEFAULT NULL,
   `email` varchar(150) DEFAULT NULL,
   `nationality` varchar(100) DEFAULT NULL,
@@ -130,9 +133,9 @@ CREATE TABLE `user_table` (
 -- Dumping data for table `user_table`
 --
 
-INSERT INTO `user_table` (`user_id`, `first_name`, `last_name`, `phone`, `gender`, `dob`, `occupation`, `email`, `nationality`, `role`) VALUES
-(1, 'John', 'Admin', '0977123456', 'Male', '1985-04-10', 'Loan Officer', 'admin@sefa.com', 'Zambia', 'admin'),
-(2, 'Mary', 'Client', '0977765432', 'Female', '1995-09-15', 'Teacher', 'client@sefa.com', 'Zambia', 'user');
+INSERT INTO `user_table` (`user_id`, `first_name`, `last_name`, `username`, `phone`, `NRC`, `gender`, `date_of_birth`, `address`, `occupation`, `email`, `nationality`, `role`) VALUES
+(1, 'philip', 'Admin', 'JohnAdmin', '0977123456', '123456789', 'Female', '1985-04-10', '200 hallo', 'entreprenuer', 'admin@sefa.com', 'Zambia', 'admin'),
+(2, 'Mary', 'Client', 'MaryClient', '0977765432', '246810121', 'Female', '1995-09-15', '123 street', 'Teacher', 'client@sefa.com', 'Zambia', 'user');
 
 --
 -- Indexes for dumped tables
