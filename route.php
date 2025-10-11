@@ -5,7 +5,7 @@
     try {
         // Join login_details with user_table using email
         $stmt = $pdo->prepare("
-            SELECT login_details.*, user_table.role, user_table.email, user_table.user_id 
+            SELECT login_details.*, user_table.role, user_table.email, user_table.user_id ,user_table.first_name, user_table.last_name
             FROM login_details 
             INNER JOIN user_table ON login_details.user_id = user_table.user_id 
             WHERE user_table.email = :email
@@ -18,14 +18,15 @@
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             // If passwords are NOT hashed (plain text)
-            if ($password === $user['password']) {
+          if (password_verify($password, $user['password'])) {
+
 
                 // Set session variables
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['role'] = $user['role'];
 
-                // Redirect based on role
+               // Redirect based on role
                 if ($user['role'] === 'admin') {
                     header("Location: admin/index.php");
                     exit();

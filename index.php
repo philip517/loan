@@ -20,8 +20,7 @@ if (isset($_SESSION['user_id'])) {
     // Finally destroy the session
     session_destroy();
 }
-require 'db_connect.php'; // include your PDO connection
-require 'route.php';
+
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
@@ -74,7 +73,9 @@ require 'route.php';
                                     </form>
 
                                     <div class="text-center">
-                                        <a class="small" href="forgot-password.html">Forgot Password?</a>
+                                        <a class="small" href="forgot-password.html">Forgot Password?</a><br>
+                                        <a class="small" href="register.php">SignUp?</a>
+
                                     </div>
                                     <div class="text-center"></div>
                                 </div>
