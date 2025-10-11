@@ -4,3 +4,4 @@
 -we added a password hashing and verify function to hash the passwords as they are inserted into the database and when logging in
 -added the navbar and side panel to appear from the navbar.php file to allow me to recycle the view 
 -added the check for email on the register page before creatinng a new user to prevent the use of an already existing email
+-created version_1.o branch
