@@ -30,7 +30,12 @@
                 if ($user['role'] === 'admin') {
                     header("Location: admin/index.php");
                     exit();
-                } else {
+                } 
+                 elseif ($user['role'] === 'super_admin') {
+                    header("Location: s_admin/index.php");
+                    exit();
+                }
+                else {
                     header("Location: client/index.php");
                     exit();
                 }

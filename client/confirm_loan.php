@@ -23,60 +23,17 @@ require '../db_connect.php'; // include your PDO connection
     <div id="wrapper">
          <?php require 'navbar.php' ?>
                 <div class="container-fluid" style="margin-top: 100PX;">
-                    <div class="d-sm-flex justify-content-between align-items-center mb-4">
-                        <h3 class="text-dark mb-0"><strong>LOANS</strong></h3><a class="btn btn-primary btn-sm d-none d-sm-inline-block" role="button" href="apply_loan.php">&nbsp;Request Loan</a>
-                    </div>
+                    
                     <div class="row" style="display: flex;text-align: center;">
                         <div>
-                            <ul class="nav nav-tabs" role="tablist">
-                                <li class="nav-item" role="presentation"><a class="nav-link focus-ring focus-ring-primary" role="tab" data-bs-toggle="tab" href="#tab-1">APPROVED</a></li>
-                                <li class="nav-item" role="presentation"><a class="nav-link active bg-gradient focus-ring" role="tab" data-bs-toggle="tab" href="#tab-2">PENDING</a></li>
-                            </ul>
+                                            <div class="col" style="text-align: center; margin-top:20px;margin-bottom:50px"><a class="btn btn-primary btn-sm d-none d-sm-inline-block me-5" role="button" href="message.php" style="background: var(--bs-success);text-align: right;">&nbsp;Send Message</a></div>
+                          
                             <div class="tab-content">
-                                <div class="tab-pane" role="tabpanel" id="tab-1">
-                                    <section class="ps-2 pe-2 pt-3" id="approved_loan_details" style="background: rgba(28,200,138,0.14);">
-                                        <p class="mt-0 pt-0">Date of Application</p>
-                                        <div class="row me-0">
-                                            <div class="col-md-6 col-lg-6 col-xl-6 mb-4">
-                                                <div class="card shadow py-2 border-left-primary">
-                                                    <div class="card-body text-start">
-                                                        <h1>Client</h1>
-                                                        <p>Name:<br>Nrc:<br>Phone:<br><br><br></p>
-                                                        <h1>Kin</h1>
-                                                        <p>Name:<br>Nrc:<br>Phone:<br><br><br></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6 text-start mb-4">
-                                                <div class="card shadow py-2 border-left-success">
-                                                    <div class="card-body">
-                                                        <h1>Loan</h1>
-                                                        <p>Amount:<br>Duration:<br>Interest:<br><br><br></p>
-                                                        <h1>Loan</h1>
-                                                        <p>Name:<br>Nrc:<br>Phone:<br><br><br></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col col-md-12 col-lg-12">
-                                                <p class="mt-0 pt-0" style="width: 100%;">Images</p>
-                                            </div>
-                                            <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12 text-start mb-4">
-                                                <div class="card shadow py-2 border-left-success">
-                                                    <div class="card-body">
-                                                        <h1>Image 1</h1><img src="assets/img/dogs/image3.jpeg" width="199" height="187">
-                                                        <h1>Image 2</h1><img src="assets/img/dogs/image3.jpeg" width="199" height="187">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
+                               
                                 <div class="tab-pane active" role="tabpanel" id="tab-2">
                                     <section class="ps-2 pe-2 pt-3" id="pending_loan_details-1" style="background: rgba(246,194,62,0.13);">
-                                        <div class="row">
-                                            <div class="col" style="text-align: right;"><a class="btn btn-primary btn-sm d-none d-sm-inline-block" role="button" href="message.php" style="background: var(--bs-success);text-align: right;">&nbsp;Send Message</a></div>
-                                        </div>
-                                        <p class="mt-0 pt-0">Date of Application</p>
+                                    
+                                        
                                         <div class="row me-0">
                                             <div class="col-md-6 col-lg-6 col-xl-6 mb-4">
                                                 <div class="card shadow py-2 border-left-primary">

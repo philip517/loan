@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 11, 2025 at 01:36 AM
+-- Generation Time: Oct 12, 2025 at 04:04 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -60,13 +60,13 @@ CREATE TABLE `loan` (
   `amount` decimal(12,2) NOT NULL,
   `duration` int(11) NOT NULL,
   `interest` decimal(5,2) DEFAULT 0.00,
-  `client_id` int(11) DEFAULT NULL,
   `loan_start_date` date DEFAULT NULL,
   `loan_end_date` date DEFAULT NULL,
   `collateral_name` varchar(255) DEFAULT NULL,
   `image1` longblob DEFAULT NULL,
   `image2` longblob DEFAULT NULL,
-  `user_id` int(11) NOT NULL
+  `user_id` int(11) NOT NULL,
+  `user_id_image` longblob NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -88,8 +88,9 @@ CREATE TABLE `login_details` (
 --
 
 INSERT INTO `login_details` (`login_id`, `username`, `password`, `password_reset_phrase`, `user_id`) VALUES
-(1, 'admin', 'admin123', 'first pet name', 1),
-(2, 'client', 'client123', 'favorite color', 2);
+(26, 'PhilipMUMBI', '$2y$10$UcHdtJx1QCgXEY8rZGFX1elF7IBlvBSN9Yt/uSYsZCC1927BQMFGu', NULL, 26),
+(27, 'ShadrickMumbi', '$2y$10$K38E5C7rQLGx.SagDR93OuUJrRuKSwsZqLt3FymPBQCEQxBMng6S.', '12345', 27),
+(28, 'KasmanMan', '$2y$10$2mbFZybdhB4G5ZLmsU1Qn.1QjG4ThKij.RKRGehZsbqE/f14wJnze', '1234', 28);
 
 -- --------------------------------------------------------
 
@@ -119,23 +120,25 @@ CREATE TABLE `user_table` (
   `last_name` varchar(100) NOT NULL,
   `username` varchar(100) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `NRC` text NOT NULL,
-  `gender` enum('Male','Female','Other') DEFAULT 'Other',
+  `NRC` text DEFAULT NULL,
+  `id_image` longblob DEFAULT NULL,
+  `gender` enum('Male','Female') DEFAULT 'Male',
   `date_of_birth` date DEFAULT NULL,
   `address` varchar(100) NOT NULL,
   `occupation` varchar(100) DEFAULT NULL,
   `email` varchar(150) DEFAULT NULL,
   `nationality` varchar(100) DEFAULT NULL,
-  `role` enum('user','admin') DEFAULT 'user'
+  `role` enum('client','admin','super_admin') DEFAULT 'client'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `user_table`
 --
 
-INSERT INTO `user_table` (`user_id`, `first_name`, `last_name`, `username`, `phone`, `NRC`, `gender`, `date_of_birth`, `address`, `occupation`, `email`, `nationality`, `role`) VALUES
-(1, 'philip', 'Admin', 'JohnAdmin', '0977123456', '123456789', 'Female', '1985-04-10', '200 hallo', 'entreprenuer', 'admin@sefa.com', 'Zambia', 'admin'),
-(2, 'Mary', 'Client', 'MaryClient', '0977765432', '246810121', 'Female', '1995-09-15', '123 street', 'Teacher', 'client@sefa.com', 'Zambia', 'user');
+INSERT INTO `user_table` (`user_id`, `first_name`, `last_name`, `username`, `phone`, `NRC`, `id_image`, `gender`, `date_of_birth`, `address`, `occupation`, `email`, `nationality`, `role`) VALUES
+(26, 'Philip', 'MUMBI', 'PhilipMUMBI', NULL, '', '', 'Male', NULL, '', NULL, 'admin@gmail.com', NULL, 'admin'),
+(27, 'Shadrick', 'Mumbi', 'ShadrickMumbi', '1234567890', '11212312312', '', 'Male', '2025-10-01', '1234', 'business', 'example@gmail.com', NULL, 'admin'),
+(28, 'Kasman', 'Man', 'KasmanMan', '01235245658', '1231216257', '', 'Male', '0000-00-00', '2025', 'student', 'kasman@gmail.com', NULL, 'client');
 
 --
 -- Indexes for dumped tables
@@ -209,7 +212,7 @@ ALTER TABLE `loan`
 -- AUTO_INCREMENT for table `login_details`
 --
 ALTER TABLE `login_details`
-  MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `login_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `message`
@@ -221,7 +224,7 @@ ALTER TABLE `message`
 -- AUTO_INCREMENT for table `user_table`
 --
 ALTER TABLE `user_table`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- Constraints for dumped tables
