@@ -172,3 +172,54 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkFormCompletion();
         });
+
+        // Add this function to handle the final submission with loading state
+document.getElementById('finalApplyButton').addEventListener('click', function() {
+    const finalButton = this;
+    const originalText = finalButton.innerHTML;
+    
+    // Show loading state
+    finalButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...';
+    finalButton.disabled = true;
+    
+    // Submit the form after a brief delay to show loading state
+    setTimeout(() => {
+        document.getElementById('realApplyButton').click();
+    }, 500);
+});
+
+// Enhanced form submission with better validation
+document.getElementById('loanApplicationForm').addEventListener('submit', function(e) {
+    if (!checkFormCompletion()) {
+        e.preventDefault();
+        alert('Please fill in all required fields before submitting.');
+        return;
+    }
+    
+    // Additional validation for file sizes
+    const idImage = document.querySelector('input[name="id_image"]');
+    const collateralImage1 = document.querySelector('input[name="collateral_image1"]');
+    const collateralImage2 = document.querySelector('input[name="collateral_image2"]');
+    
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    if (idImage.files[0] && idImage.files[0].size > maxSize) {
+        e.preventDefault();
+        alert('ID image is too large. Please select a file smaller than 5MB.');
+        return;
+    }
+    
+    if (collateralImage1.files[0] && collateralImage1.files[0].size > maxSize) {
+        e.preventDefault();
+        alert('Collateral image 1 is too large. Please select a file smaller than 5MB.');
+        return;
+    }
+    
+    if (collateralImage2.files[0] && collateralImage2.files[0].size > maxSize) {
+        e.preventDefault();
+        alert('Collateral image 2 is too large. Please select a file smaller than 5MB.');
+        return;
+    }
+    
+    console.log('Submitting loan application...');
+});

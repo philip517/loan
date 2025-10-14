@@ -1,102 +1,133 @@
+<?php
+session_start();
+require '../db_connect.php';
 
-<?php 
+// Get user ID from session
+$user_id = $_SESSION['user_id'] ?? null;
 
-require 'auth_client.php';
-require '../db_connect.php'; // include your PDO connection
+if (!$user_id) {
+    header("Location: ../index.php");
+    exit;
+}
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        // Begin transaction
+        $pdo->beginTransaction();
+
+        // Handle file uploads
+        $id_image_data = null;
+        $collateral_image1_data = null;
+        $collateral_image2_data = null;
+
+        // Upload ID image
+        if (isset($_FILES['id_image']) && $_FILES['id_image']['error'] === UPLOAD_ERR_OK) {
+            $id_image_data = file_get_contents($_FILES['id_image']['tmp_name']);
+        }
+
+        // Upload collateral image 1
+        if (isset($_FILES['collateral_image1']) && $_FILES['collateral_image1']['error'] === UPLOAD_ERR_OK) {
+            $collateral_image1_data = file_get_contents($_FILES['collateral_image1']['tmp_name']);
+        }
+
+        // Upload collateral image 2
+        if (isset($_FILES['collateral_image2']) && $_FILES['collateral_image2']['error'] === UPLOAD_ERR_OK) {
+            $collateral_image2_data = file_get_contents($_FILES['collateral_image2']['tmp_name']);
+        }
+
+        // Calculate interest based on your JavaScript logic (12% per week)
+        $loan_amount = floatval($_POST['loan_amount']);
+        $loan_duration = intval($_POST['loan_duration']);
+        
+        $interest_rate = 0.12; // 12% per week (matches your JS)
+        $interest_amount = $loan_amount * $interest_rate * $loan_duration;
+        $total_repayment = $loan_amount + $interest_amount;
+        
+        $loan_start_date = date('Y-m-d');
+        $loan_end_date = date('Y-m-d', strtotime("+$loan_duration weeks"));
+
+        // Insert into loan table
+        $loan_sql = "INSERT INTO loan (amount, duration, interest, loan_start_date, loan_end_date, 
+                      collateral_name, image1, image2, user_id, user_id_image) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $loan_stmt = $pdo->prepare($loan_sql);
+        $loan_stmt->execute([
+            $loan_amount,
+            $loan_duration,
+            $interest_amount,
+            $loan_start_date,
+            $loan_end_date,
+            $_POST['collateral_name'],
+            $collateral_image1_data,
+            $collateral_image2_data,
+            $user_id,
+            $id_image_data
+        ]);
+
+        $loan_id = $pdo->lastInsertId();
+
+        // Insert into kin table
+        $kin_sql = "INSERT INTO kin (first_name, last_name, nrc_number, phone, loan_id) 
+                    VALUES (?, ?, ?, ?, ?)";
+        
+        $kin_stmt = $pdo->prepare($kin_sql);
+        $kin_stmt->execute([
+            $_POST['kin_first_name'],
+            $_POST['kin_last_name'],
+            $_POST['kin_nrc'],
+            $_POST['kin_phone'],
+            $loan_id
+        ]);
+
+        // Update user details in user_table
+        $user_sql = "UPDATE user_table SET 
+                     first_name = ?, 
+                     last_name = ?, 
+                     phone = ?, 
+                     NRC = ?, 
+                     date_of_birth = ?, 
+                     address = ?, 
+                     occupation = ?, 
+                     nationality = ? 
+                     WHERE user_id = ?";
+        
+        $user_stmt = $pdo->prepare($user_sql);
+        $user_stmt->execute([
+            $_POST['first_name'],
+            $_POST['last_name'],
+            $_POST['phone'],
+            $_POST['nrc'],
+            $_POST['date_of_birth'],
+            $_POST['address'],
+            $_POST['occupation'],
+            $_POST['nationality'],
+            $user_id
+        ]);
+
+        // Commit transaction
+        $pdo->commit();
+
+        // After successful processing, show success message
+$_SESSION['success_message'] = "Loan application submitted successfully!";
+
+// Instead of redirecting, include a success page or go back
+header("Location: apply_loan.php?success=1");
+exit;
+
+    } catch (Exception $e) {
+        // Rollback transaction on error
+        $pdo->rollBack();
+        
+        // Log error and redirect to error page
+        error_log("Loan application error: " . $e->getMessage());
+        $_SESSION['error_message'] = "Failed to submit loan application. Please try again.";
+        header("Location: apply_loan.php");
+        exit;
+    }
+} else {
+    // If not POST request, redirect back to application form
+    header("Location: apply_loan.php");
+    exit;
+}
 ?>
-<!DOCTYPE html>
-<html data-bs-theme="light" lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Loan</title>
-    <meta name="description" content="Loan Page">
-    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
-    <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
-    <link rel="stylesheet" href="assets/css/styles.min.css">
-</head>
-
-<body id="page-top">
-    <div id="wrapper">
-         <?php require 'navbar.php' ?>
-                <div class="container-fluid" style="margin-top: 100PX;">
-                    
-                    <div class="row" style="display: flex;text-align: center;">
-                        <div>
-                                            <div class="col" style="text-align: center; margin-top:20px;margin-bottom:50px"><a class="btn btn-primary btn-sm d-none d-sm-inline-block me-5" role="button" href="message.php" style="background: var(--bs-success);text-align: right;">&nbsp;Send Message</a></div>
-                          
-                            <div class="tab-content">
-                               
-                                <div class="tab-pane active" role="tabpanel" id="tab-2">
-                                    <section class="ps-2 pe-2 pt-3" id="pending_loan_details-1" style="background: rgba(246,194,62,0.13);">
-                                    
-                                        
-                                        <div class="row me-0">
-                                            <div class="col-md-6 col-lg-6 col-xl-6 mb-4">
-                                                <div class="card shadow py-2 border-left-primary">
-                                                    <div class="card-body text-start">
-                                                        <h1>Client</h1>
-                                                        <p>Name:<br>Nrc:<br>Phone:<br><br><br></p>
-                                                        <h1>Kin</h1>
-                                                        <p>Name:<br>Nrc:<br>Phone:<br><br><br></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6 text-start mb-4">
-                                                <div class="card shadow py-2 border-left-success">
-                                                    <div class="card-body">
-                                                        <h1>Loan</h1>
-                                                        <p>Amount:<br>Duration:<br>Interest:<br><br><br></p>
-                                                        <h1>Loan</h1>
-                                                        <p>Name:<br>Nrc:<br>Phone:<br><br><br></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col col-md-12 col-lg-12">
-                                                <p class="mt-0 pt-0" style="width: 100%;">Images</p>
-                                            </div>
-                                            <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12 text-start mb-4">
-                                                <div class="card shadow py-2 border-left-success">
-                                                    <div class="card-body">
-                                                        <h1>Image 1</h1><img src="assets/img/dogs/image3.jpeg" width="199" height="187">
-                                                        <h1>Image 2</h1><img src="assets/img/dogs/image3.jpeg" width="199" height="187">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <footer class="bg-white sticky-footer">
-                <div class="container my-auto">
-                    <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
-                </div>
-            </footer>
-        </div><a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    </div>
-    <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header"></div>
-                <div class="modal-body">
-                    <p>Leaving Already ?</p>
-                </div>
-                <div class="modal-footer text-end" style="text-align: justify;">
-                    <p style="text-align: left;"><button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>&nbsp;&nbsp;<a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="login.php">Yes</a></p>
-                    <div class="text-center" style="display: inline-block;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
-    <script src="assets/js/script.min.js"></script>
-</body>
-
-</html>
