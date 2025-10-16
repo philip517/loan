@@ -81,160 +81,329 @@ $progress_width = empty($approved_loans) ? 0 : $progress_percentage;
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Home</title>
-    <meta name="description" content="User Home Page">
+    <title>Dashboard</title>
+    <meta name="description" content="User Dashboard">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
+    <style>
+        .card-header {
+            font-weight: 600;
+        }
+        .stat-card {
+            transition: transform 0.2s ease-in-out;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .border-left-primary {
+            border-left: 4px solid #007bff !important;
+        }
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+        .border-left-info {
+            border-left: 4px solid #17a2b8 !important;
+        }
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+        .progress {
+            height: 8px;
+        }
+        .dashboard-section {
+            margin-bottom: 2rem;
+        }
+    </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="container-fluid">
-            <div class="row" style="margin-top: 100PX;">
-                <!-- Amount Loaned Card -->
-                <div class="col-md-6 col-xl-3 mb-4">
-                    <div class="card shadow py-2 border-left-primary">
-                        <div class="card-body">
-                            <div class="row g-0 align-items-center">
-                                <div class="col me-2">
-                                    <div class="text-uppercase text-primary mb-1 fw-bold text-xs"><span>AMOUNT LOANED</span></div>
-                                    <div class="text-dark mb-0 fw-bold h5"><span><?php echo $display_loaned; ?></span></div>
-                                    <?php if (empty($approved_loans)): ?>
-                                        <small class="text-muted">No approved loans</small>
-                                    <?php else: ?>
-                                        <small class="text-muted">Total from <?php echo count($approved_loans); ?> loan(s)</small>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="col-auto"><i class="fas fa-calendar fa-2x text-gray-300"></i></div>
-                            </div>
+        <div class="d-flex flex-column" id="content-wrapper">
+            <div id="content" style="background: rgba(255,255,255,0.09);">
+                <div class="container-fluid" style="margin-top: 80px;">
+                    <div class="d-sm-flex justify-content-between align-items-center mb-4">
+                        <h3 class="text-dark mb-0"><strong>DASHBOARD</strong></h3>
+                        <div>
+                            <a class="btn btn-primary me-2" href="apply_loan.php">
+                                <i class="fas fa-plus me-2"></i>Apply for Loan
+                            </a>
+                            <a class="btn btn-outline-primary" href="loan.php">
+                                <i class="fas fa-list me-2"></i>View My Loans
+                            </a>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Amount Due Card -->
-                <div class="col-md-6 col-xl-3 mb-4">
-                    <div class="card shadow py-2 border-left-success">
-                        <div class="card-body">
-                            <div class="row g-0 align-items-center">
-                                <div class="col me-2">
-                                    <div class="text-uppercase text-success mb-1 fw-bold text-xs"><span>AMOUNT DUE</span></div>
-                                    <div class="text-dark mb-0 fw-bold h5"><span><?php echo $display_due; ?></span></div>
-                                    <?php if (empty($approved_loans)): ?>
-                                        <small class="text-muted">No payments due</small>
-                                    <?php else: ?>
-                                        <small class="text-muted">Principal + Interest</small>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="col-auto"><i class="fas fa-dollar-sign fa-2x text-gray-300"></i></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Due Date Progress Card -->
-                <div class="col-md-6 col-xl-3 mb-4">
-                    <div class="card shadow py-2 border-left-info">
-                        <div class="card-body">
-                            <div class="row g-0 align-items-center">
-                                <div class="col me-2">
-                                    <div class="text-uppercase text-info mb-1 fw-bold text-xs"><span>LOAN PROGRESS</span></div>
-                                    <div class="row g-0 align-items-center">
-                                        <div class="col-auto">
-                                            <div class="text-dark me-3 mb-0 fw-bold h5"><span><?php echo $display_progress; ?></span></div>
+
+                    <!-- Statistics Cards -->
+                    <div class="row dashboard-section">
+                        <!-- Amount Loaned Card -->
+                        <div class="col-md-6 col-xl-3 mb-4">
+                            <div class="card shadow-lg border-0 border-left-primary stat-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col me-2">
+                                            <div class="text-uppercase text-primary mb-1 fw-bold">
+                                                <i class="fas fa-hand-holding-usd me-2"></i>Amount Loaned
+                                            </div>
+                                            <div class="text-dark mb-0 fw-bold h4"><?php echo $display_loaned; ?></div>
+                                            <?php if (empty($approved_loans)): ?>
+                                                <small class="text-muted">No approved loans</small>
+                                            <?php else: ?>
+                                                <small class="text-muted">Total from <?php echo count($approved_loans); ?> loan(s)</small>
+                                            <?php endif; ?>
                                         </div>
-                                        <div class="col">
-                                            <div class="progress progress-sm">
-                                                <div class="progress-bar bg-info" aria-valuenow="<?php echo $progress_width; ?>" aria-valuemin="0" aria-valuemax="100" style="width: <?php echo $progress_width; ?>%;">
-                                                    <span class="visually-hidden"><?php echo $display_progress; ?></span>
+                                        <div class="col-auto">
+                                            <i class="fas fa-money-bill-wave fa-2x text-primary opacity-25"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Amount Due Card -->
+                        <div class="col-md-6 col-xl-3 mb-4">
+                            <div class="card shadow-lg border-0 border-left-success stat-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col me-2">
+                                            <div class="text-uppercase text-success mb-1 fw-bold">
+                                                <i class="fas fa-file-invoice-dollar me-2"></i>Amount Due
+                                            </div>
+                                            <div class="text-dark mb-0 fw-bold h4"><?php echo $display_due; ?></div>
+                                            <?php if (empty($approved_loans)): ?>
+                                                <small class="text-muted">No payments due</small>
+                                            <?php else: ?>
+                                                <small class="text-muted">Principal + Interest</small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-credit-card fa-2x text-success opacity-25"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Loan Progress Card -->
+                        <div class="col-md-6 col-xl-3 mb-4">
+                            <div class="card shadow-lg border-0 border-left-info stat-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col me-2">
+                                            <div class="text-uppercase text-info mb-1 fw-bold">
+                                                <i class="fas fa-chart-line me-2"></i>Loan Progress
+                                            </div>
+                                            <div class="text-dark mb-2 fw-bold h4"><?php echo $display_progress; ?></div>
+                                            <div class="progress mb-2">
+                                                <div class="progress-bar bg-info" role="progressbar" 
+                                                     style="width: <?php echo $progress_width; ?>%" 
+                                                     aria-valuenow="<?php echo $progress_width; ?>" 
+                                                     aria-valuemin="0" aria-valuemax="100">
+                                                </div>
+                                            </div>
+                                            <?php if (!empty($approved_loans) && $nearest_due_date): ?>
+                                                <small class="text-muted">Due: <?php echo date('M j, Y', strtotime($nearest_due_date)); ?></small>
+                                            <?php else: ?>
+                                                <small class="text-muted">No active loans</small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-tasks fa-2x text-info opacity-25"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Days Remaining Card -->
+                        <div class="col-md-6 col-xl-3 mb-4">
+                            <div class="card shadow-lg border-0 border-left-warning stat-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col me-2">
+                                            <div class="text-uppercase text-warning mb-1 fw-bold">
+                                                <i class="fas fa-clock me-2"></i>Days Remaining
+                                            </div>
+                                            <div class="text-dark mb-0 fw-bold h4">
+                                                <?php 
+                                                if ($display_days === '-') {
+                                                    echo '-';
+                                                } else if ($days_remaining < 0) {
+                                                    echo '<span class="text-danger">' . abs($days_remaining) . '</span>';
+                                                } else {
+                                                    echo $display_days;
+                                                }
+                                                ?>
+                                            </div>
+                                            <?php if (empty($approved_loans)): ?>
+                                                <small class="text-muted">No due dates</small>
+                                            <?php elseif ($days_remaining < 0): ?>
+                                                <small class="text-danger fw-bold">Days Overdue!</small>
+                                            <?php else: ?>
+                                                <small class="text-muted">Until next payment</small>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-calendar-alt fa-2x text-warning opacity-25"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions & Notifications -->
+                    <div class="row dashboard-section">
+                        <!-- Quick Actions -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow-lg border-0">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>Quick Actions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-md-6 mb-3">
+                                            <a href="apply_loan.php" class="btn btn-outline-primary w-100 py-3">
+                                                <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                                <h6>Apply for Loan</h6>
+                                                <small class="text-muted">Start new application</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <a href="loan.php" class="btn btn-outline-success w-100 py-3">
+                                                <i class="fas fa-list fa-2x mb-2"></i>
+                                                <h6>My Loans</h6>
+                                                <small class="text-muted">View loan status</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <a href="profile.php" class="btn btn-outline-info w-100 py-3">
+                                                <i class="fas fa-user fa-2x mb-2"></i>
+                                                <h6>My Profile</h6>
+                                                <small class="text-muted">Update information</small>
+                                            </a>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <a href="message.php" class="btn btn-outline-warning w-100 py-3">
+                                                <i class="fas fa-envelope fa-2x mb-2"></i>
+                                                <h6>Messages</h6>
+                                                <small class="text-muted">Contact support</small>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications & Contact -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow-lg border-0">
+                                <div class="card-header bg-success text-white py-3">
+                                    <h5 class="mb-0"><i class="fas fa-bell me-2"></i>Notifications & Support</h5>
+                                </div>
+                                <div class="card-body">
+                                    <?php if (empty($approved_loans)): ?>
+                                        <div class="alert alert-info">
+                                            <div class="d-flex">
+                                                <i class="fas fa-info-circle fa-2x me-3"></i>
+                                                <div>
+                                                    <h6 class="alert-heading">Welcome!</h6>
+                                                    <p class="mb-0">You don't have any approved loans yet. <a href="apply_loan.php" class="alert-link">Apply for a loan</a> to get started.</p>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <?php if (!empty($approved_loans) && $nearest_due_date): ?>
-                                        <small class="text-muted">Due: <?php echo date('M j, Y', strtotime($nearest_due_date)); ?></small>
                                     <?php else: ?>
-                                        <small class="text-muted">No active loans</small>
+                                        <div class="alert alert-success">
+                                            <div class="d-flex">
+                                                <i class="fas fa-check-circle fa-2x me-3"></i>
+                                                <div>
+                                                    <h6 class="alert-heading">Active Loans</h6>
+                                                    <p class="mb-0">You have <strong><?php echo count($approved_loans); ?> approved loan(s)</strong>. Keep track of your payments and due dates.</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     <?php endif; ?>
+
+                                    <?php if (!empty($approved_loans) && $days_remaining < 0): ?>
+                                        <div class="alert alert-danger">
+                                            <div class="d-flex">
+                                                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                                                <div>
+                                                    <h6 class="alert-heading">Payment Overdue!</h6>
+                                                    <p class="mb-0">Your payment is <strong><?php echo abs($days_remaining); ?> days overdue</strong>. Please contact support immediately.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="card bg-light mt-3">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><i class="fas fa-headset me-2"></i>Customer Support</h6>
+                                            <p class="card-text">For any queries and information concerning your loans, please contact us:</p>
+                                            <ul class="list-unstyled">
+                                                <li><i class="fas fa-phone me-2 text-primary"></i> <strong>Phone:</strong> +2601234567890</li>
+                                                <li><i class="fas fa-envelope me-2 text-primary"></i> <strong>Email:</strong> support@sefasatty.com</li>
+                                                <li><i class="fas fa-clock me-2 text-primary"></i> <strong>Hours:</strong> Mon-Fri, 8AM-5PM</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-auto"><i class="fas fa-clipboard-list fa-2x text-gray-300"></i></div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Days Remaining Card -->
-                <div class="col-md-6 col-xl-3 mb-4">
-                    <div class="card shadow py-2 border-left-warning">
-                        <div class="card-body">
-                            <div class="row g-0 align-items-center">
-                                <div class="col me-2">
-                                    <div class="text-uppercase text-warning mb-1 fw-bold text-xs"><span>DAYS REMAINING</span></div>
-                                    <div class="text-dark mb-0 fw-bold h5">
-                                        <span>
-                                            <?php 
-                                            if ($display_days === '-') {
-                                                echo '-';
-                                            } else if ($days_remaining < 0) {
-                                                echo '<span class="text-danger">' . abs($days_remaining) . ' days overdue</span>';
-                                            } else {
-                                                echo $display_days . ' days';
-                                            }
-                                            ?>
-                                        </span>
+
+                    <!-- Recent Activity (if any loans exist) -->
+                    <?php if (!empty($approved_loans)): ?>
+                    <div class="row dashboard-section">
+                        <div class="col-12">
+                            <div class="card shadow-lg border-0">
+                                <div class="card-header bg-info text-white py-3">
+                                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Loan Activity</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Loan Amount</th>
+                                                    <th>Duration</th>
+                                                    <th>Interest</th>
+                                                    <th>Total Due</th>
+                                                    <th>Start Date</th>
+                                                    <th>End Date</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach (array_slice($approved_loans, 0, 5) as $loan): ?>
+                                                <tr>
+                                                    <td>K<?php echo number_format($loan['amount'], 2); ?></td>
+                                                    <td><?php echo $loan['duration']; ?> weeks</td>
+                                                    <td>K<?php echo number_format($loan['interest'], 2); ?></td>
+                                                    <td><strong>K<?php echo number_format($loan['amount'] + $loan['interest'], 2); ?></strong></td>
+                                                    <td><?php echo date('M j, Y', strtotime($loan['loan_start_date'])); ?></td>
+                                                    <td><?php echo date('M j, Y', strtotime($loan['loan_end_date'])); ?></td>
+                                                    <td><span class="badge bg-success">Approved</span></td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <?php if (empty($approved_loans)): ?>
-                                        <small class="text-muted">No due dates</small>
-                                    <?php elseif ($days_remaining < 0): ?>
-                                        <small class="text-danger">Payment overdue!</small>
-                                    <?php else: ?>
-                                        <small class="text-muted">Until next payment</small>
+                                    <?php if (count($approved_loans) > 5): ?>
+                                        <div class="text-center mt-3">
+                                            <a href="loan.php" class="btn btn-outline-primary">View All Loans</a>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="col-auto"><i class="fas fa-comments fa-2x text-gray-300"></i></div>
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
-            
-            <div class="row">
-                <div class="col">
-                    <div class="card shadow py-2 border-left-info">
-                        <div class="card-body" style="width: 100%;">
-                            <h4 class="ps-2 pt-2 pb-2 card-title" style="background: var(--bs-success-bg-subtle);width: 100%;">NOTIFICATION</h4>
-                            <h6 class="text-muted mt-4 card-subtitle mb-2">Administrator</h6>
-                            <p class="card-text">For any queries and information on any areas concerning the loans please feel free to contact us on<br><br>Cell: +2601234567890<br>Email: email@example.com</p>
-                            
-                            <?php if (empty($approved_loans)): ?>
-                                <div class="alert alert-info mt-3">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    You don't have any approved loans. <a href="apply_loan.php" class="alert-link">Apply for a loan</a> to see your statistics here.
-                                </div>
-                            <?php else: ?>
-                                <div class="alert alert-success mt-3">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    You have <strong><?php echo count($approved_loans); ?> approved loan(s)</strong>. Keep track of your payments and due dates.
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <footer class="bg-white sticky-footer">
-        <div class="container my-auto">
-            <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
-        </div>
-    </footer>
-    
-    <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
-    
-    <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
+  <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header"></div>
@@ -245,14 +414,22 @@ $progress_width = empty($approved_loans) ? 0 : $progress_percentage;
                     <p style="text-align: left;">
                         <button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>
                         &nbsp;&nbsp;
-                        <a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="login.php">Yes</a>
+                        <a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="../index.php">Yes</a>
                     </p>
                     <div class="text-center" style="display: inline-block;"></div>
                 </div>
             </div>
         </div>
     </div>
-    
+            <footer class="bg-white sticky-footer">
+                <div class="container my-auto">
+                    <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
+                </div>
+            </footer>
+        </div>
+        <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
+    </div>
+
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
 </body>

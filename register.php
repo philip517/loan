@@ -27,11 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             // Start transaction
             $pdo->beginTransaction();
-
+            
             // Insert into user_table
             $stmt = $pdo->prepare("INSERT INTO user_table (first_name, last_name, username, email, role) VALUES (:first_name, :last_name, :username, :email, :role)");
             $username = $first_name . $last_name; // simple username generation
-            $role = 'user';
+            $role = 'client';
             $stmt->execute([
                 ':first_name' => $first_name,
                 ':last_name' => $last_name,
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $first_name = $last_name = $email = $password = "";
 
             // Redirect to the same page to clear POST and show alert
-            echo "<script>alert('Account created successfully!');window.location.href='register.php';</script>";
+            echo "<script>alert('Account created successfully!');window.location.href='index.php';</script>";
             exit;
         }
 

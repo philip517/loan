@@ -2,15 +2,13 @@
 require 'auth_admin.php';
 require '../db_connect.php'; // PDO connection
 
-// Get admin ID from session
+// Get user ID from session
 $user_id = $_SESSION['user_id'] ?? null;
 
 if (!$user_id) {
     header("Location: ../index.php");
     exit;
 }
-
-
 
 // Handle updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -45,36 +43,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
  
     // Update password and/or reset phrase
-if (isset($_POST['update_password'])) {
-    $new_password = trim($_POST['new_password']);
-    $confirm_password = trim($_POST['com_password']);
-    $reset_phrase = trim($_POST['reset_phrase']);
+    if (isset($_POST['update_password'])) {
+        $new_password = trim($_POST['new_password']);
+        $confirm_password = trim($_POST['com_password']);
+        $reset_phrase = trim($_POST['reset_phrase']);
 
-    if ($new_password !== '' || $confirm_password !== '') {
-        // Password fields have data, so update password
-        if ($new_password === $confirm_password) {
-            $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE login_details SET password=?, password_reset_phrase=? WHERE user_id=?");
-            $stmt->execute([$hashedPassword, $reset_phrase, $user_id]);
+        if ($new_password !== '' || $confirm_password !== '') {
+            // Password fields have data, so update password
+            if ($new_password === $confirm_password) {
+                $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE login_details SET password=?, password_reset_phrase=? WHERE user_id=?");
+                $stmt->execute([$hashedPassword, $reset_phrase, $user_id]);
+                header("Location: profile.php");
+                exit;
+            } else {
+                $password_error = "Passwords do not match!";
+            }
+        } else {
+            // Only update reset phrase, password remains unchanged
+            $stmt = $pdo->prepare("UPDATE login_details SET password_reset_phrase=? WHERE user_id=?");
+            $stmt->execute([$reset_phrase, $user_id]);
             header("Location: profile.php");
             exit;
-        } else {
-            $password_error = "Passwords do not match!";
         }
-    } else {
-        // Only update reset phrase, password remains unchanged
-        $stmt = $pdo->prepare("UPDATE login_details SET password_reset_phrase=? WHERE user_id=?");
-        $stmt->execute([$reset_phrase, $user_id]);
-        header("Location: profile.php");
-        exit;
     }
 }
 
-}
-
-
-// Fetch existing admin data
-//$stmt = $pdo->prepare("SELECT * FROM user_table WHERE user_id = ?");
+// Fetch existing user data
 $stmt = $pdo->prepare("
     SELECT u.*, l.password_reset_phrase 
     FROM user_table u
@@ -82,7 +77,13 @@ $stmt = $pdo->prepare("
     WHERE u.user_id = ?
 ");
 $stmt->execute([$user_id]);
-$admin = $stmt->fetch(PDO::FETCH_ASSOC);
+$user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// If no user data found, redirect
+if (!$user_data) {
+    header("Location: ../index.php");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
@@ -93,118 +94,249 @@ $admin = $stmt->fetch(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
+    <style>
+        .card-header {
+            font-weight: 600;
+        }
+        .form-control-user {
+            border-radius: 0.35rem;
+            padding: 0.75rem 1rem;
+        }
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .border-left-primary {
+            border-left: 4px solid #007bff !important;
+        }
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+        .border-left-info {
+            border-left: 4px solid #17a2b8 !important;
+        }
+        .profile-section {
+            margin-bottom: 2rem;
+        }
+    </style>
 </head>
 <body id="page-top">
 <div id="wrapper">
     <!-- Sidebar -->
     <?php require 'navbar.php'; ?>
-        <div id="content">
-            <div class="container-fluid" style="margin-top:100px;">
-                <h3 class="text-dark mb-4">Profile</h3>
-                <div class="row d-flex justify-content-center mb-3">
-                    <div class="col-lg-8">
+    <div class="d-flex flex-column" id="content-wrapper">
+        <div id="content" style="background: rgba(255,255,255,0.09);">
+            <div class="container-fluid" style="margin-top: 80px;">
+                <div class="d-sm-flex justify-content-between align-items-center mb-4">
+                    <h3 class="text-dark mb-0"><strong>MY PROFILE</strong></h3>
+                </div>
+                
+                <div class="row d-flex justify-content-center">
+                    <div class="col-lg-10">
+                        <!-- Success/Error Messages -->
+                        <?php if (isset($_SESSION['success_message'])): ?>
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <?php echo $_SESSION['success_message']; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            <?php unset($_SESSION['success_message']); ?>
+                        <?php endif; ?>
+                        
+                        <?php if (isset($password_error)): ?>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <?php echo $password_error; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        <?php endif; ?>
 
-                        <!-- Credentials -->
-                        <div class="card shadow mb-3">
-                            <div class="card-header py-3"><p class="text-primary m-0 fw-bold">User Credentials</p></div>
-                            <div class="card-body">
-                                <form method="post" class="user">
-                                    <input type="hidden" name="update_credentials" value="1">
-                                    <div class="row">
-                                        <div class="col">
-                                            <label class="form-label" for="username"><strong>Username</strong></label>
-                                            <input class="form-control form-control-user" type="text" id="username" name="username" value="<?= htmlspecialchars($admin['username'] ?? '') ?>">
+                        <!-- User Credentials -->
+                        <div class="profile-section">
+                            <div class="card shadow-lg border-0 border-left-primary">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>User Credentials</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post" class="user">
+                                        <input type="hidden" name="update_credentials" value="1">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="username"><strong>Username</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="username" name="username" value="<?= htmlspecialchars($user_data['username'] ?? '') ?>" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="email"><strong>Email Address</strong></label>
+                                                    <input class="form-control form-control-user" type="email" id="email" name="email" value="<?= htmlspecialchars($user_data['email'] ?? '') ?>" required>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col">
-                                            <label class="form-label" for="email"><strong>Email</strong></label>
-                                            <input class="form-control form-control-user" type="email" id="email" name="email" value="<?= htmlspecialchars($admin['email'] ?? '') ?>">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="first_name"><strong>First Name</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="first_name" name="first_name" value="<?= htmlspecialchars($user_data['first_name'] ?? '') ?>" required>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="last_name"><strong>Last Name</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="last_name" name="last_name" value="<?= htmlspecialchars($user_data['last_name'] ?? '') ?>" required>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="row mt-2">
-                                        <div class="col">
-                                            <label class="form-label" for="first_name"><strong>First Name</strong></label>
-                                            <input class="form-control form-control-user" type="text" id="first_name" name="first_name" value="<?= htmlspecialchars($admin['first_name'] ?? '') ?>">
+                                        <div class="text-center mt-4">
+                                            <button class="btn btn-primary px-4" type="submit">
+                                                <i class="fas fa-save me-2"></i>Save Credentials
+                                            </button>
                                         </div>
-                                        <div class="col">
-                                            <label class="form-label" for="last_name"><strong>Last Name</strong></label>
-                                            <input class="form-control form-control-user" type="text" id="last_name" name="last_name" value="<?= htmlspecialchars($admin['last_name'] ?? '') ?>">
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm mt-3 form-control-user" type="submit">Save Settings</button>
-                                </form>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Personal Details -->
-                        <div class="card shadow mb-3">
-                            <div class="card-header py-3"><p class="text-primary m-0 fw-bold">Personal Details</p></div>
-                            <div class="card-body">
-                                <form method="post" class="user">
-                                    <input type="hidden" name="update_personal" value="1">
-                                    <div class="row">
-                                        <div class="col">
-                                            <label class="form-label" for="date_of_birth"><strong>Date of Birth</strong></label>
-                                            <input class="form-control form-control-user" type="date" id="date_of_birth" name="date_of_birth" value="<?= htmlspecialchars($admin['date_of_birth'] ?? '') ?>">
+                        <div class="profile-section">
+                            <div class="card shadow-lg border-0 border-left-info">
+                                <div class="card-header bg-info text-white py-3">
+                                    <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Personal Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post" class="user">
+                                        <input type="hidden" name="update_personal" value="1">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="date_of_birth"><strong>Date of Birth</strong></label>
+                                                    <input class="form-control form-control-user" type="date" id="date_of_birth" name="date_of_birth" value="<?= htmlspecialchars($user_data['date_of_birth'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="phone"><strong>Phone Number</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="phone" name="phone" value="<?= htmlspecialchars($user_data['phone'] ?? '') ?>">
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col">
-                                            <label class="form-label" for="phone"><strong>Phone</strong></label>
-                                            <input class="form-control form-control-user" type="text" id="phone" name="phone" value="<?= htmlspecialchars($admin['phone'] ?? '') ?>">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="address"><strong>Address</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="address" name="address" value="<?= htmlspecialchars($user_data['address'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="NRC"><strong>NRC Number</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="NRC" name="NRC" value="<?= htmlspecialchars($user_data['NRC'] ?? '') ?>">
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="row mt-2">
-                                        <div class="col">
-                                            <label class="form-label" for="address"><strong>Address</strong></label>
-                                            <input class="form-control form-control-user" type="text" id="address" name="address" value="<?= htmlspecialchars($admin['address'] ?? '') ?>">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="gender"><strong>Gender</strong></label>
+                                                    <select class="form-select form-control-user" name="gender">
+                                                        <option value="Male" <?= ($user_data['gender'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
+                                                        <option value="Female" <?= ($user_data['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="occupation"><strong>Occupation</strong></label>
+                                                    <select class="form-select form-control-user" name="occupation">
+                                                        <option value="student" <?= ($user_data['occupation'] ?? '') === 'student' ? 'selected' : '' ?>>Student</option>
+                                                        <option value="business" <?= ($user_data['occupation'] ?? '') === 'business' ? 'selected' : '' ?>>Business</option>
+                                                        <option value="worker" <?= ($user_data['occupation'] ?? '') === 'worker' ? 'selected' : '' ?>>Worker</option>
+                                                        <option value="entreprenuer" <?= ($user_data['occupation'] ?? '') === 'entreprenuer' ? 'selected' : '' ?>>Entrepreneur</option>
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col">
-                                            <label class="form-label" for="NRC"><strong>NRC</strong></label>
-                                            <input class="form-control form-control-user" type="text" id="NRC" name="NRC" value="<?= htmlspecialchars($admin['NRC'] ?? '') ?>">
+                                        <div class="text-center mt-4">
+                                            <button class="btn btn-primary px-4" type="submit">
+                                                <i class="fas fa-save me-2"></i>Save Personal Details
+                                            </button>
                                         </div>
-                                    </div>
-                                    <div class="row mt-2">
-                                        <div class="col">
-                                            <label class="form-label" for="gender"><strong>Gender</strong></label>
-                                            <select class="form-select form-control-user" name="gender">
-                                                <option value="male" <?= ($admin['gender'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
-                                                <option value="female" <?= ($admin['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
-                                            </select>
-                                        </div>
-                                        <div class="col">
-                                            <label class="form-label" for="occupation"><strong>Occupation</strong></label>
-                                            <select class="form-select form-control-user" name="occupation">
-                                                <option value="student" <?= ($admin['occupation'] ?? '') === 'student' ? 'selected' : '' ?>>Student</option>
-                                                <option value="business" <?= ($admin['occupation'] ?? '') === 'business' ? 'selected' : '' ?>>Business</option>
-                                                <option value="worker" <?= ($admin['occupation'] ?? '') === 'worker' ? 'selected' : '' ?>>Worker</option>
-                                                <option value="entreprenuer" <?= ($admin['occupation'] ?? '') === 'entreprenuer' ? 'selected' : '' ?>>Entrepreneur</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm mt-3 form-control-user" type="submit">Save Personal Details</button>
-                                </form>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Change Password -->
-                        <div class="card shadow mb-3">
-                            <div class="card-header py-3"><p class="text-primary m-0 fw-bold">Change Password</p></div>
-                            <div class="card-body">
-                                <?php if (!empty($password_error)) echo '<div class="alert alert-danger">'.$password_error.'</div>'; ?>
-                                <form method="post" class="user">
-                                    <input type="hidden" name="update_password" value="1">
-                                    <div class="mb-3">
-                                        <label class="form-label" for="new_password"><strong>New Password</strong></label>
-                                        <input class="form-control form-control-user" type="password" id="new_password" name="new_password" >
+                        <!-- Security Settings -->
+                        <div class="profile-section">
+                            <div class="card shadow-lg border-0 border-left-warning">
+                                <div class="card-header bg-warning text-dark py-3">
+                                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Security Settings</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post" class="user">
+                                        <input type="hidden" name="update_password" value="1">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="new_password"><strong>New Password</strong></label>
+                                                    <input class="form-control form-control-user" type="password" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
+                                                    <small class="form-text text-muted">Minimum 6 characters</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="com_password"><strong>Confirm New Password</strong></label>
+                                                    <input class="form-control form-control-user" type="password" id="com_password" name="com_password" placeholder="Confirm new password">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="reset_phrase"><strong>Password Reset Phrase</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="reset_phrase" name="reset_phrase" value="<?= htmlspecialchars($user_data['password_reset_phrase'] ?? '') ?>" required>
+                                                    <small class="form-text text-muted">This phrase will be used to reset your password if you forget it</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-center mt-4">
+                                            <button class="btn btn-primary px-4" type="submit">
+                                                <i class="fas fa-key me-2"></i>Update Security Settings
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Summary -->
+                        <div class="profile-section">
+                            <div class="card shadow-lg border-0 border-left-success">
+                                <div class="card-header bg-success text-white py-3">
+                                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Account Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <p><strong>Member Since:</strong> <?= date('F j, Y', strtotime($user_data['created_at'] ?? 'now')) ?></p>
+                                                <p><strong>Account Status:</strong> <span class="badge bg-success">Active</span></p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <p><strong>User Role:</strong> <span class="badge bg-primary"><?= ucfirst($user_data['role'] ?? 'Client') ?></span></p>
+                                          
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label class="form-label" for="com_password"><strong>Confirm New Password</strong></label>
-                                        <input class="form-control form-control-user" type="password" id="com_password" name="com_password" >
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label" for="reset_phrase"><strong>Reset Phrase</strong></label>
-                                        <input class="form-control form-control-user" type="text" id="reset_phrase" name="reset_phrase" value="<?= htmlspecialchars($admin['password_reset_phrase'] ?? '') ?>">
-                                    </div>
-                                    <button class="btn btn-primary btn-sm mt-2 form-control-user" type="submit">Save Password</button>
-                                </form>
+                                    <div class="text-center mt-4">
+                                        <a href="index.php" class="btn btn-primary px-4">
+                                            <i class="fas fa-home me-2"></i>Go to Dashboard
+                                        </a>    
+                                </div>
                             </div>
                         </div>
 

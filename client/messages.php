@@ -74,6 +74,25 @@ if (!empty($messages)) {
                 </div>
             <?php endif; ?>
         </div>
+
+         <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header"></div>
+                <div class="modal-body">
+                    <p>Leaving Already ?</p>
+                </div>
+                <div class="modal-footer text-end" style="text-align: justify;">
+                    <p style="text-align: left;">
+                        <button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>
+                        &nbsp;&nbsp;
+                        <a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="../index.php">Yes</a>
+                    </p>
+                    <div class="text-center" style="display: inline-block;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
 </body>

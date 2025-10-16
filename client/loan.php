@@ -32,8 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
 }
 
 // Fetch user's loans from database using the status column
-$loan_sql = "SELECT l.*, u.first_name, u.last_name, u.phone, u.NRC, k.first_name as kin_first_name, 
-                    k.last_name as kin_last_name, k.nrc_number as kin_nrc, k.phone as kin_phone
+$loan_sql = "SELECT l.*, u.first_name, u.last_name, u.phone, u.NRC, u.email, u.occupation, u.address,
+                    k.first_name as kin_first_name, k.last_name as kin_last_name, 
+                    k.nrc_number as kin_nrc, k.phone as kin_phone
              FROM loan l 
              LEFT JOIN user_table u ON l.user_id = u.user_id 
              LEFT JOIN kin k ON l.loan_id = k.loan_id 
@@ -46,95 +47,165 @@ $loans = $loan_stmt->fetchAll(PDO::FETCH_ASSOC);
 // Separate loans by status using the status column
 $approved_loans = [];
 $pending_loans = [];
+$rejected_loans = [];
 
 foreach ($loans as $loan) {
     if ($loan['status'] === 'approved') {
         $approved_loans[] = $loan;
+    } elseif ($loan['status'] === 'rejected') {
+        $rejected_loans[] = $loan;
     } else {
         $pending_loans[] = $loan;
     }
 }
 
-// Function to display loan details
-function displayLoanDetails($loan, $status) {
-    $bg_color = $status === 'approved' ? 'rgba(28,200,138,0.14)' : 'rgba(246,194,62,0.13)';
-    $border_color = $status === 'approved' ? 'border-left-success' : 'border-left-warning';
+// Function to display loan details in card format
+function displayLoanCard($loan, $status) {
+    $status_color = match($status) {
+        'approved' => 'success',
+        'rejected' => 'danger',
+        default => 'warning'
+    };
+    
+    $status_bg = match($status) {
+        'approved' => 'rgba(28,200,138,0.14)',
+        'rejected' => 'rgba(231,76,60,0.14)',
+        default => 'rgba(246,194,62,0.13)'
+    };
+    
+    $border_color = match($status) {
+        'approved' => 'border-left-success',
+        'rejected' => 'border-left-danger',
+        default => 'border-left-warning'
+    };
     
     // Convert BLOB images to base64 for display
     $image1_src = $loan['image1'] ? 'data:image/jpeg;base64,' . base64_encode($loan['image1']) : 'assets/img/dogs/image3.jpeg';
     $image2_src = $loan['image2'] ? 'data:image/jpeg;base64,' . base64_encode($loan['image2']) : 'assets/img/dogs/image3.jpeg';
+    $user_id_image_src = $loan['user_id_image'] ? 'data:image/jpeg;base64,' . base64_encode($loan['user_id_image']) : 'assets/img/dogs/image3.jpeg';
     
-    // Calculate interest percentage
+    // Calculate interest percentage and total repayment
     $interest_percentage = $loan['amount'] > 0 ? ($loan['interest'] / $loan['amount']) * 100 : 0;
+    $total_repayment = $loan['amount'] + $loan['interest'];
     
-    $message_button = '';
+    $action_buttons = '';
     if ($status === 'pending') {
-        $message_button = '
+        $action_buttons = '
+        <div class="text-end mb-3">
+            <a href="apply_loan.php?edit='.$loan['loan_id'].'" class="btn btn-warning btn-sm me-2">
+                <i class="fas fa-edit me-2"></i>Edit Loan
+            </a>
+            <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#messageModal" 
+                    onclick="setLoanId('.$loan['loan_id'].')">
+                <i class="fas fa-envelope me-2"></i>Send Message
+            </button>
+        </div>';
+    } else {
+        // For approved/rejected loans, show only message button
+        $action_buttons = '
         <div class="text-end mb-3">
             <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#messageModal" 
                     onclick="setLoanId('.$loan['loan_id'].')">
-                <i class="fas fa-envelope me-2"></i>Send Message About This Loan
+                <i class="fas fa-envelope me-2"></i>Send Message
             </button>
         </div>';
     }
     
-    return $message_button . '
-    <section class="ps-2 pe-2 pt-3 mb-4" style="background: '.$bg_color.';">
-        <p class="mt-0 pt-0">Date of Application: '.($loan['loan_start_date'] ?? 'N/A').'</p>
-        <div class="row me-0">
-            <div class="col-md-6 col-lg-6 col-xl-6 mb-4">
-                <div class="card shadow py-2 '.$border_color.'">
-                    <div class="card-body text-start">
-                        <h5>Client Details</h5>
-                        <p><strong>Name:</strong> '.($loan['first_name'] ?? 'N/A').' '.($loan['last_name'] ?? 'N/A').'<br>
-                        <strong>NRC:</strong> '.($loan['NRC'] ?? 'N/A').'<br>
-                        <strong>Phone:</strong> '.($loan['phone'] ?? 'N/A').'</p>
-                        
-                        <h5>Next of Kin</h5>
-                        <p><strong>Name:</strong> '.($loan['kin_first_name'] ?? 'N/A').' '.($loan['kin_last_name'] ?? 'N/A').'<br>
-                        <strong>NRC:</strong> '.($loan['kin_nrc'] ?? 'N/A').'<br>
-                        <strong>Phone:</strong> '.($loan['kin_phone'] ?? 'N/A').'</p>
+    return '
+    <div class="card shadow-lg border-0 mb-4 '.$border_color.'" style="background: '.$status_bg.';">
+        <div class="card-header bg-white py-3">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="mb-0">Loan Application</h5>
+                    <p class="text-muted mb-0">Applied on: '.($loan['loan_start_date'] ?? 'N/A').'</p>
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-'.$status_color.' fs-6">'.strtoupper($status).'</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            '.$action_buttons.'
+            <div class="row">
+                <!-- Client & Kin Information -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-primary text-white py-2">
+                            <h6 class="mb-0"><i class="fas fa-user me-2"></i>Client & Kin Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Client Name:</strong> '.($loan['first_name'] ?? 'N/A').' '.($loan['last_name'] ?? 'N/A').'</p>
+                            <p class="mb-2"><strong>NRC:</strong> '.($loan['NRC'] ?? 'N/A').'</p>
+                            <p class="mb-2"><strong>Phone:</strong> '.($loan['phone'] ?? 'N/A').'</p>
+                            <p class="mb-2"><strong>Occupation:</strong> '.($loan['occupation'] ?? 'N/A').'</p>
+                            <hr>
+                            <p class="mb-2"><strong>Next of Kin:</strong> '.($loan['kin_first_name'] ?? 'N/A').' '.($loan['kin_last_name'] ?? 'N/A').'</p>
+                            <p class="mb-2"><strong>Kin NRC:</strong> '.($loan['kin_nrc'] ?? 'N/A').'</p>
+                            <p class="mb-0"><strong>Kin Phone:</strong> '.($loan['kin_phone'] ?? 'N/A').'</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Loan Details -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-success text-white py-2">
+                            <h6 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Loan Details</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Loan Amount:</strong> K'.number_format($loan['amount'] ?? 0, 2).'</p>
+                            <p class="mb-2"><strong>Duration:</strong> '.($loan['duration'] ?? 0).' Weeks</p>
+                            <p class="mb-2"><strong>Interest:</strong> K'.number_format($loan['interest'] ?? 0, 2).' ('.number_format($interest_percentage, 1).'%)</p>
+                            <p class="mb-2"><strong>Total Repayment:</strong> K'.number_format($total_repayment, 2).'</p>
+                            <p class="mb-2"><strong>Start Date:</strong> '.($loan['loan_start_date'] ?? 'N/A').'</p>
+                            <p class="mb-0"><strong>End Date:</strong> '.($loan['loan_end_date'] ?? 'N/A').'</p>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-12 col-md-6 col-lg-6 col-xl-6 text-start mb-4">
-                <div class="card shadow py-2 '.$border_color.'">
-                    <div class="card-body">
-                        <h5>Loan Details</h5>
-                        <p><strong>Amount:</strong> K'.number_format($loan['amount'] ?? 0, 2).'<br>
-                        <strong>Duration:</strong> '.($loan['duration'] ?? 0).' week(s)<br>
-                        <strong>Interest:</strong> K'.number_format($loan['interest'] ?? 0, 2).' ('.number_format($interest_percentage, 1).'%)<br>
-                        <strong>Total Repayment:</strong> K'.number_format(($loan['amount'] + $loan['interest']) ?? 0, 2).'<br>
-                        <strong>Status:</strong> <span class="badge bg-'.($status === 'approved' ? 'success' : 'warning').'">'.ucfirst($status).'</span><br>
-                        <strong>End Date:</strong> '.($loan['loan_end_date'] ?? 'N/A').'</p>
-                        
-                        <h5>Collateral</h5>
-                        <p><strong>Item:</strong> '.($loan['collateral_name'] ?? 'N/A').'</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12 text-start mb-4">
-                <div class="card shadow py-2 '.$border_color.'">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Collateral Image 1</h6>
-                                <img src="'.$image1_src.'" class="img-fluid clickable-image" style="max-height: 200px; max-width: 100%; cursor: pointer;" 
-                                     alt="Collateral Image 1" 
-                                     onclick="openImageModal(\''.$image1_src.'\', \'Collateral Image 1\')">
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Collateral Image 2</h6>
-                                <img src="'.$image2_src.'" class="img-fluid clickable-image" style="max-height: 200px; max-width: 100%; cursor: pointer;" 
-                                     alt="Collateral Image 2" 
-                                     onclick="openImageModal(\''.$image2_src.'\', \'Collateral Image 2\')">
+            
+            <!-- Collateral Information -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-warning text-dark py-2">
+                            <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Collateral & ID Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3"><strong>Collateral Item:</strong> '.($loan['collateral_name'] ?? 'N/A').'</p>
+                            <div class="row">
+                                <div class="col-md-4 text-center mb-3">
+                                    <h6>ID Image</h6>
+                                    <img src="'.$user_id_image_src.'" class="img-fluid clickable-image" 
+                                         style="max-height: 200px; max-width: 100%; cursor: pointer; border: 2px solid #dee2e6; border-radius: 8px;" 
+                                         alt="User ID Image" 
+                                         onclick="openImageModal(\''.$user_id_image_src.'\', \'User ID Image\')">
+                                    <p class="small text-muted mt-2">User Identification</p>
+                                </div>
+                                <div class="col-md-4 text-center mb-3">
+                                    <h6>Collateral Image 1</h6>
+                                    <img src="'.$image1_src.'" class="img-fluid clickable-image" 
+                                         style="max-height: 200px; max-width: 100%; cursor: pointer; border: 2px solid #dee2e6; border-radius: 8px;" 
+                                         alt="Collateral Image 1" 
+                                         onclick="openImageModal(\''.$image1_src.'\', \'Collateral Image 1\')">
+                                    <p class="small text-muted mt-2">Collateral Front View</p>
+                                </div>
+                                <div class="col-md-4 text-center mb-3">
+                                    <h6>Collateral Image 2</h6>
+                                    <img src="'.$image2_src.'" class="img-fluid clickable-image" 
+                                         style="max-height: 200px; max-width: 100%; cursor: pointer; border: 2px solid #dee2e6; border-radius: 8px;" 
+                                         alt="Collateral Image 2" 
+                                         onclick="openImageModal(\''.$image2_src.'\', \'Collateral Image 2\')">
+                                    <p class="small text-muted mt-2">Collateral Alternate View</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>';
+    </div>';
 }
 ?>
 <!DOCTYPE html>
@@ -143,8 +214,8 @@ function displayLoanDetails($loan, $status) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Loan</title>
-    <meta name="description" content="Loan Page">
+    <title>My Loans</title>
+    <meta name="description" content="My Loans Page">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
@@ -154,8 +225,9 @@ function displayLoanDetails($loan, $status) {
             transition: transform 0.2s ease-in-out;
         }
         .clickable-image:hover {
-            transform: scale(1.02);
+            transform: scale(1.05);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-color: #007bff !important;
         }
         .modal-image {
             max-width: 100%;
@@ -167,13 +239,34 @@ function displayLoanDetails($loan, $status) {
             background: transparent;
             border: none;
         }
+        .card-header {
+            font-weight: 600;
+        }
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+        .border-left-danger {
+            border-left: 4px solid #dc3545 !important;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
+            color: #007bff;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
-         <?php require 'navbar.php' ?>
-                <div class="container-fluid" style="margin-top: 100PX;">
+        <?php require 'navbar.php'; ?>
+        <div class="d-flex flex-column" id="content-wrapper">
+            <div id="content" style="background: rgba(255,255,255,0.09);">
+                <div class="container-fluid" style="margin-top: 80px;">
                     <!-- Success/Error Messages -->
                     <?php if (isset($_SESSION['success_message'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -193,50 +286,76 @@ function displayLoanDetails($loan, $status) {
                     
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
                         <h3 class="text-dark mb-0"><strong>MY LOANS</strong></h3>
+                        <a class="btn btn-primary" href="apply_loan.php">
+                            <i class="fas fa-plus me-2"></i>Apply for New Loan
+                        </a>
                     </div>
-                    <div class="row" style="display: flex;text-align: center;">
+
+                    <div class="row">
                         <div class="col-12">
                             <ul class="nav nav-tabs" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <a class="nav-link focus-ring focus-ring-primary" role="tab" data-bs-toggle="tab" href="#tab-1">
+                                    <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1">
+                                        PENDING (<?php echo count($pending_loans); ?>)
+                                    </a>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-2">
                                         APPROVED (<?php echo count($approved_loans); ?>)
                                     </a>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <a class="nav-link active bg-gradient focus-ring" role="tab" data-bs-toggle="tab" href="#tab-2">
-                                        PENDING (<?php echo count($pending_loans); ?>)
+                                    <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-3">
+                                        REJECTED (<?php echo count($rejected_loans); ?>)
                                     </a>
                                 </li>
                             </ul>
+                            
                             <div class="tab-content">
-                                <!-- Approved Loans Tab -->
-                                <div class="tab-pane" role="tabpanel" id="tab-1">
-                                    <?php if (empty($approved_loans)): ?>
-                                        <div class="text-center py-5">
-                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                                            <h4>No Approved Loans</h4>
-                                            <p class="text-muted">You don't have any approved loans at the moment.</p>
-                                            <a class="btn btn-primary" role="button" href="apply_loan.php">Apply for a Loan</a>
-                                        </div>
-                                    <?php else: ?>
-                                        <?php foreach ($approved_loans as $loan): ?>
-                                            <?php echo displayLoanDetails($loan, 'approved'); ?>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </div>
-                                
                                 <!-- Pending Loans Tab -->
-                                <div class="tab-pane active" role="tabpanel" id="tab-2">
+                                <div class="tab-pane active" role="tabpanel" id="tab-1">
                                     <?php if (empty($pending_loans)): ?>
                                         <div class="text-center py-5">
                                             <i class="fas fa-clock fa-3x text-warning mb-3"></i>
                                             <h4>No Pending Loans</h4>
                                             <p class="text-muted">You don't have any pending loan applications.</p>
-                                            <a class="btn btn-primary" role="button" href="apply_loan.php">Apply for a Loan</a>
+                                            <a class="btn btn-primary" href="apply_loan.php">Apply for a Loan</a>
                                         </div>
                                     <?php else: ?>
                                         <?php foreach ($pending_loans as $loan): ?>
-                                            <?php echo displayLoanDetails($loan, 'pending'); ?>
+                                            <?php echo displayLoanCard($loan, 'pending'); ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <!-- Approved Loans Tab -->
+                                <div class="tab-pane" role="tabpanel" id="tab-2">
+                                    <?php if (empty($approved_loans)): ?>
+                                        <div class="text-center py-5">
+                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                            <h4>No Approved Loans</h4>
+                                            <p class="text-muted">You don't have any approved loans at the moment.</p>
+                                            <a class="btn btn-primary" href="apply_loan.php">Apply for a Loan</a>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($approved_loans as $loan): ?>
+                                            <?php echo displayLoanCard($loan, 'approved'); ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <!-- Rejected Loans Tab -->
+                                <div class="tab-pane" role="tabpanel" id="tab-3">
+                                    <?php if (empty($rejected_loans)): ?>
+                                        <div class="text-center py-5">
+                                            <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                                            <h4>No Rejected Loans</h4>
+                                            <p class="text-muted">You don't have any rejected loan applications.</p>
+                                            <a class="btn btn-primary" href="apply_loan.php">Apply for a Loan</a>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($rejected_loans as $loan): ?>
+                                            <?php echo displayLoanCard($loan, 'rejected'); ?>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </div>
@@ -320,27 +439,27 @@ function displayLoanDetails($loan, $status) {
         <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
     </div>
     
-    <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header"></div>
-                <div class="modal-body">
-                    <p>Leaving Already ?</p>
-                </div>
-                <div class="modal-footer text-end" style="text-align: justify;">
-                    <p style="text-align: left;">
-                        <button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>
-                        &nbsp;&nbsp;
-                        <a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="login.php">Yes</a>
-                    </p>
-                    <div class="text-center" style="display: inline-block;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
-    <script src="assets/js/zoom_image.js"></script>
+    <script>
+        function setLoanId(loanId) {
+            document.getElementById('modal_loan_id').value = loanId;
+        }
+        
+        function openImageModal(imageSrc, title) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModalTitle').textContent = title;
+            new bootstrap.Modal(document.getElementById('imageModal')).show();
+        }
+
+        // Initialize tab functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Activate the first tab by default
+            const firstTab = document.querySelector('.nav-tabs .nav-link');
+            if (firstTab) {
+                firstTab.click();
+            }
+        });
+    </script>
 </body>
 </html>
