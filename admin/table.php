@@ -1,8 +1,16 @@
-
 <?php 
-
 require 'auth_admin.php';
 require '../db_connect.php'; // include your PDO connection
+
+// Fetch all admin and super_admin users from database
+$user_sql = "SELECT user_id, first_name, last_name, username, phone, NRC, email, 
+                    occupation, address, date_of_birth, nationality, role
+             FROM user_table 
+             WHERE role IN ('admin', 'super_admin')
+             ORDER BY first_name, last_name";
+$user_stmt = $pdo->prepare($user_sql);
+$user_stmt->execute();
+$admin_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -11,12 +19,31 @@ require '../db_connect.php'; // include your PDO connection
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Clients</title>
-    <meta name="description" content="Table for clients">
+    <title>Admins</title>
+    <meta name="description" content="Table for administrators">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
+    <style>
+        .clickable-row {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .clickable-row:hover {
+            background-color: rgba(0, 123, 255, 0.1) !important;
+        }
+        .role-badge {
+            font-size: 0.75em;
+            padding: 0.25em 0.6em;
+        }
+        .table-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+    </style>
 </head>
 
 <body id="page-top">
@@ -26,15 +53,18 @@ require '../db_connect.php'; // include your PDO connection
             <div id="content">
               
                 <div class="container-fluid" style="margin-top: 100px;">
-                    <h3 class="text-dark mb-4">Clients</h3>
+                    <h3 class="text-dark mb-4">Administrators</h3>
                     <div class="card shadow">
                         <div class="card-header py-3">
-                            <p class="text-primary m-0 fw-bold">Client Info</p>
+                            <p class="text-primary m-0 fw-bold">Administrator Information</p>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 col-lg-12">
-                                    <div class="text-md-end dataTables_filter" id="dataTable_filter"><input type="search" class="form-control form-control-sm" aria-controls="dataTable" placeholder="Search" style="text-align: center;"><label class="form-label"></label></div>
+                                    <div class="text-md-end dataTables_filter" id="dataTable_filter">
+                                        <input type="search" class="form-control form-control-sm" aria-controls="dataTable" placeholder="Search administrators..." style="text-align: center;" id="searchInput">
+                                        <label class="form-label"></label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="table-responsive mt-2 table" id="dataTable" role="grid" aria-describedby="dataTable_info">
@@ -42,110 +72,53 @@ require '../db_connect.php'; // include your PDO connection
                                     <thead>
                                         <tr>
                                             <th>Name</th>
-                                            <th>Position</th>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
                                             <th>Occupation</th>
-                                            <th>Age</th>
-                                            <th>Start date</th>
-                                            <th>Loan (k)</th>
+                                            <th>Role</th>
+                                            <th>NRC</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar1.jpeg">Airi Satou</td>
-                                            <td>Accountant</td>
-                                            <td>Tokyo</td>
-                                            <td>33</td>
-                                            <td>2008/11/28</td>
-                                            <td>$162,700</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar2.jpeg">Angelica Ramos</td>
-                                            <td>Chief Executive Officer(CEO)</td>
-                                            <td>London</td>
-                                            <td>47</td>
-                                            <td>2009/10/09<br></td>
-                                            <td>$1,200,000</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar3.jpeg">Ashton Cox</td>
-                                            <td>Junior Technical Author</td>
-                                            <td>San Francisco</td>
-                                            <td>66</td>
-                                            <td>2009/01/12<br></td>
-                                            <td>$86,000</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar4.jpeg">Bradley Greer</td>
-                                            <td>Software Engineer</td>
-                                            <td>London</td>
-                                            <td>41</td>
-                                            <td>2012/10/13<br></td>
-                                            <td>$132,000</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar5.jpeg">Brenden Wagner</td>
-                                            <td>Software Engineer</td>
-                                            <td>San Francisco</td>
-                                            <td>28</td>
-                                            <td>2011/06/07<br></td>
-                                            <td>$206,850</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar1.jpeg">Brielle Williamson</td>
-                                            <td>Integration Specialist</td>
-                                            <td>New York</td>
-                                            <td>61</td>
-                                            <td>2012/12/02<br></td>
-                                            <td>$372,000</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar2.jpeg">Bruno Nash<br></td>
-                                            <td>Software Engineer</td>
-                                            <td>London</td>
-                                            <td>38</td>
-                                            <td>2011/05/03<br></td>
-                                            <td>$163,500</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar3.jpeg">Caesar Vance</td>
-                                            <td>Pre-Sales Support</td>
-                                            <td>New York</td>
-                                            <td>21</td>
-                                            <td>2011/12/12<br></td>
-                                            <td>$106,450</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar4.jpeg">Cara Stevens</td>
-                                            <td>Sales Assistant</td>
-                                            <td>New York</td>
-                                            <td>46</td>
-                                            <td>2011/12/06<br></td>
-                                            <td>$145,600</td>
-                                        </tr>
-                                        <tr>
-                                            <td><img class="rounded-circle me-2" width="30" height="30" src="assets/img/avatars/avatar5.jpeg">Cedric Kelly</td>
-                                            <td>Senior JavaScript Developer</td>
-                                            <td>Edinburgh</td>
-                                            <td>22</td>
-                                            <td>2012/03/29<br></td>
-                                            <td>$433,060</td>
-                                        </tr>
+                                        <?php if (empty($admin_users)): ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center py-4">
+                                                    <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                                                    <p class="text-muted">No administrators found</p>
+                                                </td>
+                                            </tr>
+                                        <?php else: ?>
+                                            <?php foreach ($admin_users as $user): ?>
+                                                <tr class="clickable-row" data-user-id="<?php echo $user['user_id']; ?>">
+                                                    <td>
+                                                        <img class="rounded-circle me-2 table-avatar" src="assets/img/avatars/avatar1.jpeg" alt="<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>">
+                                                        <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($user['username']); ?></td>
+                                                    <td><?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($user['occupation'] ?? 'N/A'); ?></td>
+                                                    <td>
+                                                        <?php if ($user['role'] === 'super_admin'): ?>
+                                                            <span class="badge bg-danger role-badge">Super Admin</span>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-primary role-badge">Admin</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($user['NRC'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td><strong>Name</strong></td>
-                                            <td><strong>Position</strong></td>
-                                            <td><strong>Occupation</strong></td>
-                                            <td><strong>Age</strong></td>
-                                            <td><strong>Start date</strong></td>
-                                            <td><strong>Loan</strong></td>
-                                        </tr>
-                                    </tfoot>
+                                  
                                 </table>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 align-self-center">
-                                    <p id="dataTable_info" class="dataTables_info" role="status" aria-live="polite">Showing 1 to 10 of 27</p>
+                                    <p id="dataTable_info" class="dataTables_info" role="status" aria-live="polite">
+                                        Showing <?php echo count($admin_users); ?> administrator(s)
+                                    </p>
                                 </div>
                                 <div class="col-md-6">
                                     <nav class="d-lg-flex justify-content-lg-end dataTables_paginate paging_simple_numbers">
@@ -165,7 +138,7 @@ require '../db_connect.php'; // include your PDO connection
             </div>
             <footer class="bg-white sticky-footer">
                 <div class="container my-auto">
-                    <div class="text-center my-auto copyright"><span>Copyright © Brand 2025</span></div>
+                    <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
                 </div>
                 <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
                     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -175,17 +148,53 @@ require '../db_connect.php'; // include your PDO connection
                                 <p>Leaving Already ?</p>
                             </div>
                             <div class="modal-footer text-end" style="text-align: justify;">
-                                <p style="text-align: left;"><button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>&nbsp;&nbsp;<a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="login.php">Yes</a></p>
+                                <p style="text-align: left;">
+                                    <button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>&nbsp;&nbsp;
+                                    <a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="login.php">Yes</a>
+                                </p>
                                 <div class="text-center" style="display: inline-block;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </footer>
-        </div><a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
+        </div>
+        <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
     </div>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
-</body>
+    <script>
+        // Make rows clickable and redirect to user profile
+        document.addEventListener('DOMContentLoaded', function() {
+            const clickableRows = document.querySelectorAll('.clickable-row');
+            
+            clickableRows.forEach(row => {
+                row.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    if (userId) {
+                        window.location.href = `edit_user.php?user_id=${userId}`;
+                    }
+                });
+            });
 
+            // Add search functionality
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('.clickable-row');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+</body>
 </html>

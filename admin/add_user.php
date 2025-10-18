@@ -1,205 +1,376 @@
 <?php
 require 'auth_admin.php';
-require '../db_connect.php'; // include your PDO connection
+require '../db_connect.php';
 
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        // Get form data
+        $username = $_POST['username'];
+        $email = $_POST['email'];
+        $first_name = $_POST['first_name'];
+        $last_name = $_POST['last_name'];
+        $phone = $_POST['phone'];
+        $address = $_POST['address'];
+        $NRC = $_POST['NRC'];
+        $gender = $_POST['gender'];
+        $occupation = $_POST['occupation'];
+        $date_of_birth = $_POST['date_of_birth'];
+        $nationality = $_POST['nationality'];
+        $role = $_POST['role'];
+        $password = $_POST['password'];
+        $confirm_password = $_POST['confirm_password'];
+        $reset_phrase = $_POST['reset_phrase'];
+
+        // Validate required fields
+        if (empty($username) || empty($email) || empty($first_name) || empty($last_name) || empty($password)) {
+            throw new Exception("All required fields must be filled");
+        }
+
+        // Check if passwords match
+        if ($password !== $confirm_password) {
+            throw new Exception("Passwords do not match");
+        }
+
+        // Check if username already exists
+        $check_username_sql = "SELECT user_id FROM user_table WHERE username = ?";
+        $check_username_stmt = $pdo->prepare($check_username_sql);
+        $check_username_stmt->execute([$username]);
+        if ($check_username_stmt->fetch()) {
+            throw new Exception("Username already exists");
+        }
+
+        // Check if email already exists
+        $check_email_sql = "SELECT user_id FROM user_table WHERE email = ?";
+        $check_email_stmt = $pdo->prepare($check_email_sql);
+        $check_email_stmt->execute([$email]);
+        if ($check_email_stmt->fetch()) {
+            throw new Exception("Email already exists");
+        }
+
+        // Start transaction
+        $pdo->beginTransaction();
+
+        try {
+            // Insert into user_table
+            $user_sql = "INSERT INTO user_table (username, email, first_name, last_name, phone, address, NRC, gender, occupation, date_of_birth, nationality, role, created_at) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $user_stmt = $pdo->prepare($user_sql);
+            $user_stmt->execute([
+                $username, $email, $first_name, $last_name, $phone, $address, 
+                $NRC, $gender, $occupation, $date_of_birth, $nationality, $role
+            ]);
+
+            $new_user_id = $pdo->lastInsertId();
+
+            // Hash password and insert into login_details
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $login_sql = "INSERT INTO login_details (username, password, password_reset_phrase, user_id) 
+                          VALUES (?, ?, ?, ?)";
+            $login_stmt = $pdo->prepare($login_sql);
+            $login_stmt->execute([$username, $hashed_password, $reset_phrase, $new_user_id]);
+
+            // Commit transaction
+            $pdo->commit();
+
+            $_SESSION['success_message'] = "User created successfully!";
+            header("Location: table.php");
+            exit;
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+    } catch (Exception $e) {
+        $error_message = $e->getMessage();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Dashboard - Brand</title>
+    <title>Add New User</title>
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
+    <style>
+        .card-header {
+            font-weight: 600;
+        }
+        .form-control-user {
+            border-radius: 0.35rem;
+            padding: 0.75rem 1rem;
+        }
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .border-left-primary {
+            border-left: 4px solid #007bff !important;
+        }
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
+        }
+        .border-left-info {
+            border-left: 4px solid #17a2b8 !important;
+        }
+        .profile-section {
+            margin-bottom: 2rem;
+        }
+        .required-field::after {
+            content: " *";
+            color: #dc3545;
+        }
+    </style>
 </head>
-
 <body id="page-top">
-    <div id="wrapper">
-        <nav class="navbar z-3 align-items-start p-0 sidebar sidebar-dark accordion bg-gradient-primary navbar-dark">
-            <div class="container-fluid d-flex flex-column p-0"><a class="navbar-brand d-flex justify-content-center align-items-center m-0 sidebar-brand" href="index.html">
-                    <div class="me-0 sidebar-brand-icon rotate-n-15"><img class="me-0 pe-0" src="assets/img/white%20logo.png" width="65" height="60" style="transform: rotate(10deg);"></div>
-                    <div class="mx-3 sidebar-brand-text"><span>SEFA SATTY</span></div>
-                </a>
-                <hr class="my-0 sidebar-divider">
-                <ul class="navbar-nav text-light" id="accordionSidebar">
-                    <li class="nav-item"><a class="nav-link" href="index.html"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="profile.html"><i class="fas fa-user"></i><span>Profile</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="loan.html"><i class="fas fa-user"></i><span>Loans</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="table.html"><i class="fas fa-table"></i><span>Staff</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="message.html"><i class="fas fa-table"></i><span>Messages</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="login.html"><i class="far fa-user-circle"></i><span>Login</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="register.html"><i class="fas fa-user-circle"></i><span>Add User</span></a></li>
-                </ul>
-                <div class="text-center d-none d-md-inline"><button class="btn rounded-circle border-0" id="sidebarToggle" type="button"></button></div>
-            </div>
-        </nav>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <nav class="navbar navbar-expand fixed-top bg-white shadow z-1 mb-4 topbar">
-                <div class="container-fluid"><button class="btn btn-link d-md-none me-3 rounded-circle" id="sidebarToggleTop-1" type="button"><i class="fas fa-bars"></i></button>
-                    <ul class="navbar-nav flex-nowrap ms-auto">
-                        <li class="nav-item dropdown d-sm-none no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><i class="fas fa-search"></i></a>
-                            <div class="dropdown-menu p-3 dropdown-menu-end animated--grow-in" aria-labelledby="searchDropdown">
-                                <form class="w-100 me-auto navbar-search">
-                                    <div class="input-group"><input class="bg-light border-0 form-control small" type="text" placeholder="Search for ..."><button class="btn btn-primary" type="button"><i class="fas fa-search"></i></button></div>
-                                </form>
-                            </div>
-                        </li>
-                        <li class="nav-item mx-1 dropdown no-arrow">
-                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="badge bg-danger badge-counter">3+</span><i class="fas fa-bell fa-fw"></i></a>
-                                <div class="dropdown-menu dropdown-menu-end dropdown-list animated--grow-in">
-                                    <h6 class="dropdown-header">alerts center</h6><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3">
-                                            <div class="bg-primary icon-circle"><i class="fas fa-file-alt text-white"></i></div>
-                                        </div>
-                                        <div><span class="small text-gray-500">December 12, 2019</span>
-                                            <p>A new monthly report is ready to download!</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3">
-                                            <div class="bg-success icon-circle"><i class="fas fa-donate text-white"></i></div>
-                                        </div>
-                                        <div><span class="small text-gray-500">December 7, 2019</span>
-                                            <p>$290.29 has been deposited into your account!</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3">
-                                            <div class="bg-warning icon-circle"><i class="fas fa-exclamation-triangle text-white"></i></div>
-                                        </div>
-                                        <div><span class="small text-gray-500">December 2, 2019</span>
-                                            <p>Spending Alert: We've noticed unusually high spending for your account.</p>
-                                        </div>
-                                    </a><a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="nav-item mx-1 dropdown no-arrow">
-                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="badge bg-danger badge-counter">7</span><i class="fas fa-envelope fa-fw"></i></a>
-                                <div class="dropdown-menu dropdown-menu-end dropdown-list animated--grow-in">
-                                    <h6 class="dropdown-header">alerts center</h6><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar4.jpeg">
-                                            <div class="bg-success status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>Hi there! I am wondering if you can help me with a problem I've been having.</span></div>
-                                            <p class="mb-0 small text-gray-500">Emily Fowler - 58m</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar2.jpeg">
-                                            <div class="status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>I have the photos that you ordered last month!</span></div>
-                                            <p class="mb-0 small text-gray-500">Jae Chun - 1d</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar3.jpeg">
-                                            <div class="bg-warning status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>Last month's report looks great, I am very happy with the progress so far, keep up the good work!</span></div>
-                                            <p class="mb-0 small text-gray-500">Morgan Alvarez - 2d</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar5.jpeg">
-                                            <div class="bg-success status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>Am I a good boy? The reason I ask is because someone told me that people say this to all dogs, even if they aren't good...</span></div>
-                                            <p class="mb-0 small text-gray-500">Chicken the Dog · 2w</p>
-                                        </div>
-                                    </a><a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
-                                </div>
-                            </div>
-                            <div class="shadow dropdown-list dropdown-menu dropdown-menu-end" aria-labelledby="alertsDropdown"></div>
-                        </li>
-                        <li class="nav-item dropdown no-arrow">
-                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="d-none d-lg-inline me-2 text-gray-600 small">Valerie Luna</span><img class="border rounded-circle img-profile" src="assets/img/avatars/avatar1.jpeg" width="32" height="32"></a>
-                                <div class="dropdown-menu shadow dropdown-menu-end animated--grow-in"><a class="dropdown-item" href="profile.html"><i class="fas fa-user me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Profile</a><a class="dropdown-item" href="message.html"><i class="fas fa-envelope me-2 fa-sm fa-fw text-gray-400" style="font-size: 12px;"></i>&nbsp;Messages</a><a class="dropdown-item" href="table.html"><i class="fas fa-list me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Clients</a>
-                                    <div class="dropdown-divider"></div><a class="dropdown-item" href="#modal-1" data-bs-target="#modal-1" data-bs-toggle="modal"><i class="fas fa-sign-out-alt me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Logout</a>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
+<div id="wrapper">
+    <!-- Sidebar -->
+    <?php require 'navbar.php'; ?>
+    <div class="d-flex flex-column" id="content-wrapper">
+        <div id="content" style="background: rgba(255,255,255,0.09);">
+            <div class="container-fluid" style="margin-top: 80px;">
+                <div class="d-sm-flex justify-content-between align-items-center mb-4">
+                    <h3 class="text-dark mb-0"><strong>ADD NEW USER</strong></h3>
+                    <a href="table.php" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Users
+                    </a>
                 </div>
-            </nav>
-            <div id="content" style="background: rgba(255,255,255,0.09);opacity: 1;filter: blur(0px);">
-                <div class="container mt-7">
-                    <div class="card shadow-lg my-5 o-hidden border-0">
-                        <div class="card-body p-0 mt-0">
-                            <div class="row mt-0 pt-0">
-                                <div class="col-lg-11 mt-0">
-                                    <div class="p-5 mt-0">
-                                        <div class="text-center">
-                                            <h4 class="text-dark mb-4">New User</h4>
+                
+                <div class="row d-flex justify-content-center">
+                    <div class="col-lg-10">
+                        <!-- Error Message -->
+                        <?php if (isset($error_message)): ?>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <?php echo $error_message; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Success Message -->
+                        <?php if (isset($_SESSION['success_message'])): ?>
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <?php echo $_SESSION['success_message']; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            <?php unset($_SESSION['success_message']); ?>
+                        <?php endif; ?>
+
+                        <!-- User Creation Form -->
+                        <form method="post" class="user">
+                            
+                            <!-- User Credentials -->
+                            <div class="profile-section">
+                                <div class="card shadow-lg border-0 border-left-primary">
+                                    <div class="card-header bg-primary text-white py-3">
+                                        <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>User Credentials</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="username"><strong>Username</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="username" name="username" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" required>
+                                                    <small class="form-text text-muted">Unique username for login</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="email"><strong>Email Address</strong></label>
+                                                    <input class="form-control form-control-user" type="email" id="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <form class="user">
-                                            <div class="mb-3 row">
-                                                <div class="col-sm-6 mb-3 mb-sm-0"><input class="form-control form-control-user" type="text" id="first_name" placeholder="First Name" name="first_name"></div>
-                                                <div class="col-sm-6"><input class="form-control form-control-user" type="text" id="last_name" placeholder="Last Name" name="last_name"></div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="first_name"><strong>First Name</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="first_name" name="first_name" value="<?= htmlspecialchars($_POST['first_name'] ?? '') ?>" required>
+                                                </div>
                                             </div>
-                                            <div class="mb-3 row">
-                                                <div class="col-sm-6 mb-3 mb-sm-0"><input class="form-control form-control-user" data-bs-toggle="tooltip" data-bss-tooltip="" id="date" type="date" name="dateofbirth" value="date of birth" title="Date of Birth"></div>
-                                                <div class="col-sm-6"><select class="form-select form-control-user" id="occupation">
-                                                        <optgroup label="Position">
-                                                            <option value="1" selected="">Student</option>
-                                                            <option value="2">Worker</option>
-                                                        </optgroup>
-                                                    </select></div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="last_name"><strong>Last Name</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="last_name" name="last_name" value="<?= htmlspecialchars($_POST['last_name'] ?? '') ?>" required>
+                                                </div>
                                             </div>
-                                            <div class="mb-3 row">
-                                                <div class="col-sm-6 mb-3 mb-sm-0"><input class="form-control form-control-user" type="text" id="nrc" name="id" placeholder="ID / NRC"></div>
-                                                <div class="col-sm-6"><select class="form-select form-control-user" id="nationality">
-                                                        <optgroup label="Nationality">
-                                                            <option value="1" selected="">Zambian</option>
-                                                            <option value="2">Other</option>
-                                                        </optgroup>
-                                                    </select></div>
-                                            </div>
-                                            <div class="mb-3 row">
-                                                <div class="col-sm-6 mb-3 mb-sm-0"><input class="form-control form-control-user" type="text" id="phone" placeholder="phone" name="phone"></div>
-                                                <div class="col-sm-6"><input class="form-control form-control-user" type="text" id="address" placeholder="address" name="address"></div>
-                                            </div>
-                                            <hr>
-                                            <div class="mb-3 row">
-                                                <div class="col-sm-6 col-md-12 mb-3 mb-sm-0"><label class="form-label">Upload ID or NRC</label><input class="form-control form-control-user" type="file" placeholder="phone" name="phone"></div>
-                                            </div>
-                                            <h4 class="text-center text-dark mb-4">
-                                                <div class="btn-group" role="group"><button class="btn btn-primary" type="submit">CREATE USER</button></div>
-                                            </h4>
-                                        </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+
+                            <!-- Personal Details -->
+                            <div class="profile-section">
+                                <div class="card shadow-lg border-0 border-left-info">
+                                    <div class="card-header bg-info text-white py-3">
+                                        <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Personal Details</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="date_of_birth"><strong>Date of Birth</strong></label>
+                                                    <input class="form-control form-control-user" type="date" id="date_of_birth" name="date_of_birth" value="<?= htmlspecialchars($_POST['date_of_birth'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="phone"><strong>Phone Number</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="phone" name="phone" value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="address"><strong>Address</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="address" name="address" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="NRC"><strong>NRC Number</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="NRC" name="NRC" value="<?= htmlspecialchars($_POST['NRC'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="gender"><strong>Gender</strong></label>
+                                                    <select class="form-select form-control-user" name="gender">
+                                                        <option value="Male" <?= ($_POST['gender'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
+                                                        <option value="Female" <?= ($_POST['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="occupation"><strong>Occupation</strong></label>
+                                                    <select class="form-select form-control-user" name="occupation">
+                                                        <option value="student" <?= ($_POST['occupation'] ?? '') === 'student' ? 'selected' : '' ?>>Student</option>
+                                                        <option value="business" <?= ($_POST['occupation'] ?? '') === 'business' ? 'selected' : '' ?>>Business</option>
+                                                        <option value="worker" <?= ($_POST['occupation'] ?? '') === 'worker' ? 'selected' : '' ?>>Worker</option>
+                                                        <option value="entreprenuer" <?= ($_POST['occupation'] ?? '') === 'entreprenuer' ? 'selected' : '' ?>>Entrepreneur</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="nationality"><strong>Nationality</strong></label>
+                                                    <select class="form-select form-control-user" name="nationality">
+                                                        <option value="Zambian" <?= ($_POST['nationality'] ?? '') === 'Zambian' ? 'selected' : '' ?>>Zambian</option>
+                                                        <option value="Other" <?= ($_POST['nationality'] ?? '') === 'Other' ? 'selected' : '' ?>>Other</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="role"><strong>User Role</strong></label>
+                                                    <select class="form-select form-control-user" name="role" required>
+                                                        <option value="">Select Role</option>
+                                                        <option value="admin" <?= ($_POST['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
+                                                        <option value="super_admin" <?= ($_POST['role'] ?? '') === 'super_admin' ? 'selected' : '' ?>>Super Admin</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Security Settings -->
+                            <div class="profile-section">
+                                <div class="card shadow-lg border-0 border-left-warning">
+                                    <div class="card-header bg-warning text-dark py-3">
+                                        <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Security Settings</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="password"><strong>Password</strong></label>
+                                                    <input class="form-control form-control-user" type="password" id="password" name="password" required>
+                                                    <small class="form-text text-muted">Minimum 6 characters</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="confirm_password"><strong>Confirm Password</strong></label>
+                                                    <input class="form-control form-control-user" type="password" id="confirm_password" name="confirm_password" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <div class="mb-3">
+                                                    <label class="form-label required-field" for="reset_phrase"><strong>Password Reset Phrase</strong></label>
+                                                    <input class="form-control form-control-user" type="text" id="reset_phrase" name="reset_phrase" value="<?= htmlspecialchars($_POST['reset_phrase'] ?? '') ?>" required>
+                                                    <small class="form-text text-muted">This phrase will be used by the user to reset their password if they forget it</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Section -->
+                            <div class="profile-section">
+                                <div class="card shadow-lg border-0 border-left-success">
+                                    <div class="card-header bg-success text-white py-3">
+                                        <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Create User Account</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Information:</strong> Please review all the information before creating the user account. 
+                                            Once created, the user will be able to log in with the provided credentials.
+                                        </div>
+                                        <div class="text-center mt-4">
+                                            <button type="reset" class="btn btn-secondary px-4 me-3">
+                                                <i class="fas fa-redo me-2"></i>Reset Form
+                                            </button>
+                                            <button type="submit" class="btn btn-success px-4">
+                                                <i class="fas fa-user-plus me-2"></i>Create User Account
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
-            <footer class="bg-white sticky-footer">
-                <div class="container my-auto">
-                    <div class="text-center my-auto copyright"><span>Copyright © Brand 2025</span></div>
-                </div>
-                <div class="modal fade text-center" role="dialog" tabindex="-1" id="modal-1">
-                    <div class="modal-dialog modal-dialog-centered" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header"></div>
-                            <div class="modal-body">
-                                <p>Leaving Already ?</p>
-                            </div>
-                            <div class="modal-footer text-end" style="text-align: justify;">
-                                <p style="text-align: left;"><button class="btn btn-light" type="button" data-bs-dismiss="modal" style="text-align: center;">No</button>&nbsp;&nbsp;<a class="btn btn-primary" role="button" style="background: var(--bs-danger);" href="login.html">Yes</a></p>
-                                <div class="text-center" style="display: inline-block;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-        </div><a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
+        </div>
     </div>
-    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
-    <script src="assets/js/script.min.js"></script>
+</div>
+<script src="assets/bootstrap/js/bootstrap.min.js"></script>
+<script src="assets/js/script.min.js"></script>
+<script>
+    // Password confirmation validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirm_password');
+        
+        function validatePassword() {
+            if (password.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity("Passwords do not match");
+            } else {
+                confirmPassword.setCustomValidity("");
+            }
+        }
+        
+        password.addEventListener('change', validatePassword);
+        confirmPassword.addEventListener('keyup', validatePassword);
+    });
+</script>
 </body>
-
 </html>

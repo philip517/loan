@@ -55,28 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $interest = $loan_amount * 0.10 * $duration;
         
         if ($is_editing) {
-            // Update existing loan
+            // Update existing loan - only store loan-specific data
             $loan_sql = "UPDATE loan SET 
-                        first_name = ?, last_name = ?, NRC = ?, phone = ?, occupation = ?, 
-                        address = ?, date_of_birth = ?, nationality = ?, collateral_name = ?, 
-                        amount = ?, duration = ?, interest = ?, user_id_image = ?, image1 = ?, image2 = ?,
+                        amount = ?, duration = ?, interest = ?, 
+                        collateral_name = ?, user_id_image = ?, image1 = ?, image2 = ?,
                         status = 'pending', updated_at = CURRENT_TIMESTAMP
                         WHERE loan_id = ? AND user_id = ?";
             
             $loan_stmt = $pdo->prepare($loan_sql);
             $loan_stmt->execute([
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['nrc'],
-                $_POST['phone'],
-                $_POST['occupation'],
-                $_POST['address'],
-                $_POST['date_of_birth'],
-                $_POST['nationality'],
-                $_POST['collateral_name'],
                 $loan_amount,
                 $duration,
                 $interest,
+                $_POST['collateral_name'],
                 $id_image,
                 $collateral_image1,
                 $collateral_image2,
@@ -101,27 +92,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['success_message'] = "Loan application updated successfully! It will be reviewed again.";
             
         } else {
-            // Insert new loan
-            $loan_sql = "INSERT INTO loan (user_id, first_name, last_name, NRC, phone, occupation, 
-                         address, date_of_birth, nationality, collateral_name, amount, duration, 
-                         interest, user_id_image, image1, image2, status, loan_start_date) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURDATE())";
+            // Insert new loan - only store loan-specific data
+            $loan_sql = "INSERT INTO loan (user_id, amount, duration, interest, 
+                         collateral_name, user_id_image, image1, image2, status, loan_start_date) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURDATE())";
             
             $loan_stmt = $pdo->prepare($loan_sql);
             $loan_stmt->execute([
                 $user_id,
-                $_POST['first_name'],
-                $_POST['last_name'],
-                $_POST['nrc'],
-                $_POST['phone'],
-                $_POST['occupation'],
-                $_POST['address'],
-                $_POST['date_of_birth'],
-                $_POST['nationality'],
-                $_POST['collateral_name'],
                 $loan_amount,
                 $duration,
                 $interest,
+                $_POST['collateral_name'],
                 $id_image,
                 $collateral_image1,
                 $collateral_image2

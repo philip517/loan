@@ -18,7 +18,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 <li class="nav-item"><a class="nav-link" href="loan.php"><i class="fas fa-user"></i><span>Loans</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="table.php"><i class="fas fa-table"></i><span>Staff</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-table"></i><span>Messages</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="register.php"><i class="fas fa-user-circle"></i><span>Add User</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="add_user.php"><i class="fas fa-user-circle"></i><span>Add User</span></a></li>
             </ul>
         </div>
     </nav>

@@ -126,14 +126,7 @@ $progress_width = empty($approved_loans) ? 0 : $progress_percentage;
                 <div class="container-fluid" style="margin-top: 80px;">
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
                         <h3 class="text-dark mb-0"><strong>DASHBOARD</strong></h3>
-                        <div>
-                            <a class="btn btn-primary me-2" href="apply_loan.php">
-                                <i class="fas fa-plus me-2"></i>Apply for Loan
-                            </a>
-                            <a class="btn btn-outline-primary" href="loan.php">
-                                <i class="fas fa-list me-2"></i>View My Loans
-                            </a>
-                        </div>
+                        
                     </div>
 
                     <!-- Statistics Cards -->
