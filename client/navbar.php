@@ -12,7 +12,7 @@ $unread_count = $notification_data['unread_count'] ?? 0;
 
 <nav class="navbar fixed-top position-static float-start align-items-start p-0 sidebar sidebar-dark accordion bg-gradient-primary navbar-dark">
     <div class="container-fluid d-flex flex-column p-0">
-        <a class="navbar-brand d-flex justify-content-center align-items-center m-0 sidebar-brand" href="#">
+        <a class="navbar-brand d-flex justify-content-center align-items-center m-0 sidebar-brand" href="index.php">
             <img src="assets/img/white%20logo.png" width="63" height="78" style="transform: rotate(-7deg);">
             <div class="mx-3 sidebar-brand-text">
                 <span><?php echo htmlspecialchars($user['first_name'] ?? 'User'); ?></span>
@@ -140,7 +140,7 @@ $unread_count = $notification_data['unread_count'] ?? 0;
                                     <i class="fas fa-list me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Loans
                                 </a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="#modal-1" data-bs-target="#modal-1" data-bs-toggle="modal">
+                                <a class="dropdown-item" href="../index.php" >
                                     <i class="fas fa-sign-out-alt me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Logout
                                 </a>
                             </div>
