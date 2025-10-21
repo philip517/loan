@@ -279,7 +279,7 @@ $progress_width = empty($approved_loans) ? 0 : $progress_percentage;
                                             </a>
                                         </div>
                                         <div class="col-md-6 mb-3">
-                                            <a href="message.php" class="btn btn-outline-warning w-100 py-3">
+                                            <a href="messages.php" class="btn btn-outline-warning w-100 py-3">
                                                 <i class="fas fa-envelope fa-2x mb-2"></i>
                                                 <h6>Messages</h6>
                                                 <small class="text-muted">Contact support</small>

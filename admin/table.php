@@ -92,7 +92,6 @@ $admin_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <?php foreach ($admin_users as $user): ?>
                                                 <tr class="clickable-row" data-user-id="<?php echo $user['user_id']; ?>">
                                                     <td>
-                                                        <img class="rounded-circle me-2 table-avatar" src="assets/img/avatars/avatar1.jpeg" alt="<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>">
                                                         <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
                                                     </td>
                                                     <td><?php echo htmlspecialchars($user['username']); ?></td>

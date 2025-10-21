@@ -220,45 +220,161 @@ function displayLoanCard($loan, $status) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
-        .clickable-image {
-            transition: transform 0.2s ease-in-out;
+<style>
+    .clickable-image {
+        transition: transform 0.2s ease-in-out;
+    }
+    .clickable-image:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        border-color: #007bff !important;
+    }
+    .modal-image {
+        max-width: 100%;
+        max-height: 80vh;
+        width: auto;
+        height: auto;
+    }
+    .image-modal-content {
+        background: transparent;
+        border: none;
+    }
+    .card-header {
+        font-weight: 600;
+    }
+    .border-left-success {
+        border-left: 4px solid #28a745 !important;
+    }
+    .border-left-warning {
+        border-left: 4px solid #ffc107 !important;
+    }
+    .border-left-danger {
+        border-left: 4px solid #dc3545 !important;
+    }
+    
+    /* Fixed Tab Styles */
+    .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+        background: #f8f9fa;
+        padding: 0 15px;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 12px 20px;
+        margin-bottom: -2px;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-color: #007bff;
+        color: #007bff;
+        background: transparent;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background: transparent;
+        border-color: #007bff;
+        color: #007bff;
+        font-weight: 600;
+    }
+    
+    .tab-content {
+        background: #ffffff;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        min-height: 300px;
+        padding: 25px 15px;
+    }
+    
+    /* Fix for Bootstrap tab visibility */
+    .tab-pane {
+        display: block !important;
+    }
+    
+    .tab-pane:not(.active) {
+        display: none !important;
+    }
+    
+    .tab-pane.active {
+        display: block !important;
+    }
+    
+    /* Mobile-specific styles */
+    @media (max-width: 768px) {
+        .nav-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 0 10px;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
         }
-        .clickable-image:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            border-color: #007bff !important;
+        
+        .nav-tabs .nav-item {
+            flex-shrink: 0;
+            display: inline-block;
+            float: none;
         }
-        .modal-image {
-            max-width: 100%;
-            max-height: 80vh;
-            width: auto;
-            height: auto;
+        
+        .nav-tabs .nav-link {
+            padding: 10px 15px;
+            font-size: 14px;
+            white-space: nowrap;
         }
-        .image-modal-content {
-            background: transparent;
-            border: none;
-        }
-        .card-header {
-            font-weight: 600;
-        }
-        .border-left-success {
-            border-left: 4px solid #28a745 !important;
-        }
-        .border-left-warning {
-            border-left: 4px solid #ffc107 !important;
-        }
-        .border-left-danger {
-            border-left: 4px solid #dc3545 !important;
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
-            color: #007bff;
-        }
+        
         .tab-content {
-            padding: 20px 0;
+            padding: 20px 10px;
+            margin: 0 -10px;
+            border-radius: 0;
         }
-    </style>
+    }
+    
+    @media (max-width: 576px) {
+        .nav-tabs .nav-link {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+        
+        .tab-content {
+            padding: 15px 5px;
+        }
+    }
+
+    /* Fix tab text colors */
+.nav-tabs .nav-link {
+    color: #495057 !important;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #007bff !important;
+}
+
+.nav-tabs .nav-link.active {
+    color: #007bff !important;
+    font-weight: 600;
+}
+
+/* Ensure tab background is visible */
+.nav-tabs {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+}
+
+.nav-tabs .nav-link.active {
+    background: transparent;
+    border-bottom: 3px solid #007bff;
+}
+</style>
 </head>
 
 <body id="page-top">
@@ -294,22 +410,22 @@ function displayLoanCard($loan, $status) {
                     <div class="row">
                         <div class="col-12">
                             <ul class="nav nav-tabs" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1">
-                                        PENDING (<?php echo count($pending_loans); ?>)
-                                    </a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-2">
-                                        APPROVED (<?php echo count($approved_loans); ?>)
-                                    </a>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-3">
-                                        REJECTED (<?php echo count($rejected_loans); ?>)
-                                    </a>
-                                </li>
-                            </ul>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1" style="color: #495057; font-weight: 500;">
+            <i class="fas fa-clock me-2"></i>PENDING (<?php echo count($pending_loans); ?>)
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-2" style="color: #495057; font-weight: 500;">
+            <i class="fas fa-check-circle me-2"></i>APPROVED (<?php echo count($approved_loans); ?>)
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-3" style="color: #495057; font-weight: 500;">
+            <i class="fas fa-times-circle me-2"></i>REJECTED (<?php echo count($rejected_loans); ?>)
+        </a>
+    </li>
+</ul>
                             
                             <div class="tab-content">
                                 <!-- Pending Loans Tab -->
