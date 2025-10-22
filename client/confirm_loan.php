@@ -54,11 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $duration = intval($_POST['loan_duration']);
         $interest = $loan_amount * 0.10 * $duration;
         
+        // Calculate loan end date by adding number of weeks to loan start date
+        $loan_start_date = date('Y-m-d'); // Current date as loan start date
+        $loan_end_date = date('Y-m-d', strtotime("+$duration weeks", strtotime($loan_start_date)));
+        
         if ($is_editing) {
             // Update existing loan - only store loan-specific data
             $loan_sql = "UPDATE loan SET 
                         amount = ?, duration = ?, interest = ?, 
                         collateral_name = ?, user_id_image = ?, image1 = ?, image2 = ?,
+                        loan_start_date = ?, loan_end_date = ?,
                         status = 'pending', updated_at = CURRENT_TIMESTAMP
                         WHERE loan_id = ? AND user_id = ?";
             
@@ -71,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id_image,
                 $collateral_image1,
                 $collateral_image2,
+                $loan_start_date,
+                $loan_end_date,
                 $edit_loan_id,
                 $user_id
             ]);
@@ -94,8 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Insert new loan - only store loan-specific data
             $loan_sql = "INSERT INTO loan (user_id, amount, duration, interest, 
-                         collateral_name, user_id_image, image1, image2, status, loan_start_date) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURDATE())";
+                         collateral_name, user_id_image, image1, image2, status, 
+                         loan_start_date, loan_end_date) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)";
             
             $loan_stmt = $pdo->prepare($loan_sql);
             $loan_stmt->execute([
@@ -106,7 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['collateral_name'],
                 $id_image,
                 $collateral_image1,
-                $collateral_image2
+                $collateral_image2,
+                $loan_start_date,
+                $loan_end_date
             ]);
             
             $new_loan_id = $pdo->lastInsertId();

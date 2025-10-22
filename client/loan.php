@@ -59,6 +59,14 @@ foreach ($loans as $loan) {
     }
 }
 
+// Fetch all user data for display
+$user_sql = "SELECT * FROM user_table WHERE user_id = ?";
+$user_stmt = $pdo->prepare($user_sql);
+$user_stmt->execute([$user_id]);
+$user_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
+
+
+
 // Function to display loan details in card format
 function displayLoanCard($loan, $status) {
     $status_color = match($status) {
@@ -84,9 +92,29 @@ function displayLoanCard($loan, $status) {
     $image2_src = $loan['image2'] ? 'data:image/jpeg;base64,' . base64_encode($loan['image2']) : 'assets/img/dogs/image3.jpeg';
     $user_id_image_src = $loan['user_id_image'] ? 'data:image/jpeg;base64,' . base64_encode($loan['user_id_image']) : 'assets/img/dogs/image3.jpeg';
     
-    // Calculate interest percentage and total repayment
-    $interest_percentage = $loan['amount'] > 0 ? ($loan['interest'] / $loan['amount']) * 100 : 0;
-    $total_repayment = $loan['amount'] + $loan['interest'];
+    // Calculate interest percentage and total repayment (similar to review.js)
+    $interest_rate = 0.10; // 10% per week
+    $interest = $loan['amount'] * $interest_rate * $loan['duration'];
+    $interest_percentage = $loan['amount'] > 0 ? ($interest / $loan['amount']) * 100 : 0;
+    $total_repayment = $loan['amount'] + $interest;
+    
+    // Display admin notes if available and loan is rejected
+    $admin_notes_section = '';
+    if ($status === 'rejected' && !empty($loan['admin_notes'])) {
+        $admin_notes_section = '
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white py-2">
+                        <h6 class="mb-0"><i class="fas fa-comment-alt me-2"></i>Admin Feedback</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0 text-dark">'.htmlspecialchars($loan['admin_notes']).'</p>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    }
     
     $action_buttons = '';
     if ($status === 'pending') {
@@ -116,12 +144,10 @@ function displayLoanCard($loan, $status) {
         <div class="card-header bg-white py-3">
             <div class="row align-items-center">
                 <div class="col">
-                    <h5 class="mb-0">Loan Application</h5>
+                    <h5 class="mb-0">Loan Application #'.$loan['loan_id'].'</h5>
                     <p class="text-muted mb-0">Applied on: '.($loan['loan_start_date'] ?? 'N/A').'</p>
                 </div>
-                <div class="col-auto">
-                    <span class="badge bg-'.$status_color.' fs-6">'.strtoupper($status).'</span>
-                </div>
+            
             </div>
         </div>
         
@@ -138,7 +164,9 @@ function displayLoanCard($loan, $status) {
                             <p class="mb-2"><strong>Client Name:</strong> '.($loan['first_name'] ?? 'N/A').' '.($loan['last_name'] ?? 'N/A').'</p>
                             <p class="mb-2"><strong>NRC:</strong> '.($loan['NRC'] ?? 'N/A').'</p>
                             <p class="mb-2"><strong>Phone:</strong> '.($loan['phone'] ?? 'N/A').'</p>
+                            <p class="mb-2"><strong>Email:</strong> '.($loan['email'] ?? 'N/A').'</p>
                             <p class="mb-2"><strong>Occupation:</strong> '.($loan['occupation'] ?? 'N/A').'</p>
+                            <p class="mb-2"><strong>Address:</strong> '.($loan['address'] ?? 'N/A').'</p>
                             <hr>
                             <p class="mb-2"><strong>Next of Kin:</strong> '.($loan['kin_first_name'] ?? 'N/A').' '.($loan['kin_last_name'] ?? 'N/A').'</p>
                             <p class="mb-2"><strong>Kin NRC:</strong> '.($loan['kin_nrc'] ?? 'N/A').'</p>
@@ -156,7 +184,8 @@ function displayLoanCard($loan, $status) {
                         <div class="card-body">
                             <p class="mb-2"><strong>Loan Amount:</strong> K'.number_format($loan['amount'] ?? 0, 2).'</p>
                             <p class="mb-2"><strong>Duration:</strong> '.($loan['duration'] ?? 0).' Weeks</p>
-                            <p class="mb-2"><strong>Interest:</strong> K'.number_format($loan['interest'] ?? 0, 2).' ('.number_format($interest_percentage, 1).'%)</p>
+                            <p class="mb-2"><strong>Interest Rate:</strong> 10% per week</p>
+                            <p class="mb-2"><strong>Interest Amount:</strong> K'.number_format($interest, 2).' ('.number_format($interest_percentage, 1).'%)</p>
                             <p class="mb-2"><strong>Total Repayment:</strong> K'.number_format($total_repayment, 2).'</p>
                             <p class="mb-2"><strong>Start Date:</strong> '.($loan['loan_start_date'] ?? 'N/A').'</p>
                             <p class="mb-0"><strong>End Date:</strong> '.($loan['loan_end_date'] ?? 'N/A').'</p>
@@ -204,6 +233,8 @@ function displayLoanCard($loan, $status) {
                     </div>
                 </div>
             </div>
+            
+            '.$admin_notes_section.'
         </div>
     </div>';
 }
@@ -220,161 +251,8 @@ function displayLoanCard($loan, $status) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-<style>
-    .clickable-image {
-        transition: transform 0.2s ease-in-out;
-    }
-    .clickable-image:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        border-color: #007bff !important;
-    }
-    .modal-image {
-        max-width: 100%;
-        max-height: 80vh;
-        width: auto;
-        height: auto;
-    }
-    .image-modal-content {
-        background: transparent;
-        border: none;
-    }
-    .card-header {
-        font-weight: 600;
-    }
-    .border-left-success {
-        border-left: 4px solid #28a745 !important;
-    }
-    .border-left-warning {
-        border-left: 4px solid #ffc107 !important;
-    }
-    .border-left-danger {
-        border-left: 4px solid #dc3545 !important;
-    }
-    
-    /* Fixed Tab Styles */
-    .nav-tabs {
-        border-bottom: 2px solid #dee2e6;
-        background: #f8f9fa;
-        padding: 0 15px;
-    }
-    
-    .nav-tabs .nav-link {
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: #6c757d;
-        font-weight: 500;
-        padding: 12px 20px;
-        margin-bottom: -2px;
-        transition: all 0.3s ease;
-    }
-    
-    .nav-tabs .nav-link:hover {
-        border-color: #007bff;
-        color: #007bff;
-        background: transparent;
-    }
-    
-    .nav-tabs .nav-link.active {
-        background: transparent;
-        border-color: #007bff;
-        color: #007bff;
-        font-weight: 600;
-    }
-    
-    .tab-content {
-        background: #ffffff;
-        border-radius: 0 0 8px 8px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        min-height: 300px;
-        padding: 25px 15px;
-    }
-    
-    /* Fix for Bootstrap tab visibility */
-    .tab-pane {
-        display: block !important;
-    }
-    
-    .tab-pane:not(.active) {
-        display: none !important;
-    }
-    
-    .tab-pane.active {
-        display: block !important;
-    }
-    
-    /* Mobile-specific styles */
-    @media (max-width: 768px) {
-        .nav-tabs {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding: 0 10px;
-            -webkit-overflow-scrolling: touch;
-            white-space: nowrap;
-        }
-        
-        .nav-tabs .nav-item {
-            flex-shrink: 0;
-            display: inline-block;
-            float: none;
-        }
-        
-        .nav-tabs .nav-link {
-            padding: 10px 15px;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-        
-        .tab-content {
-            padding: 20px 10px;
-            margin: 0 -10px;
-            border-radius: 0;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .nav-tabs .nav-link {
-            padding: 8px 12px;
-            font-size: 13px;
-        }
-        
-        .tab-content {
-            padding: 15px 5px;
-        }
-    }
+    <link rel="stylesheet" href="assets/css/loan.css">
 
-    /* Fix tab text colors */
-.nav-tabs .nav-link {
-    color: #495057 !important;
-    font-weight: 500;
-}
-
-.nav-tabs .nav-link:hover {
-    color: #007bff !important;
-}
-
-.nav-tabs .nav-link.active {
-    color: #007bff !important;
-    font-weight: 600;
-}
-
-/* Ensure tab background is visible */
-.nav-tabs {
-    background: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.nav-tabs .nav-link {
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-}
-
-.nav-tabs .nav-link.active {
-    background: transparent;
-    border-bottom: 3px solid #007bff;
-}
-</style>
 </head>
 
 <body id="page-top">
@@ -401,31 +279,32 @@ function displayLoanCard($loan, $status) {
                     <?php endif; ?>
                     
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
-                        <h3 class="text-dark mb-0"><strong>MY LOANS</strong></h3>
                         <a class="btn btn-primary" href="apply_loan.php">
                             <i class="fas fa-plus me-2"></i>Apply for New Loan
                         </a>
                     </div>
 
-                    <div class="row">
+                    <!-- User Profile Section -->
+
+                    <div class="row mt-4">
                         <div class="col-12">
                             <ul class="nav nav-tabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1" style="color: #495057; font-weight: 500;">
-            <i class="fas fa-clock me-2"></i>PENDING (<?php echo count($pending_loans); ?>)
-        </a>
-    </li>
-    <li class="nav-item" role="presentation">
-        <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-2" style="color: #495057; font-weight: 500;">
-            <i class="fas fa-check-circle me-2"></i>APPROVED (<?php echo count($approved_loans); ?>)
-        </a>
-    </li>
-    <li class="nav-item" role="presentation">
-        <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-3" style="color: #495057; font-weight: 500;">
-            <i class="fas fa-times-circle me-2"></i>REJECTED (<?php echo count($rejected_loans); ?>)
-        </a>
-    </li>
-</ul>
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1" style="color: #495057; font-weight: 500;">
+                                        <i class="fas fa-clock me-2"></i>PENDING (<?php echo count($pending_loans); ?>)
+                                    </a>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-2" style="color: #495057; font-weight: 500;">
+                                        <i class="fas fa-check-circle me-2"></i>APPROVED (<?php echo count($approved_loans); ?>)
+                                    </a>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-3" style="color: #495057; font-weight: 500;">
+                                        <i class="fas fa-times-circle me-2"></i>REJECTED (<?php echo count($rejected_loans); ?>)
+                                    </a>
+                                </li>
+                            </ul>
                             
                             <div class="tab-content">
                                 <!-- Pending Loans Tab -->

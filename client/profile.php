@@ -131,7 +131,7 @@ if (!$user_data) {
         <div id="content" style="background: rgba(255,255,255,0.09);">
             <div class="container-fluid" style="margin-top: 80px;">
                 <div class="d-sm-flex justify-content-between align-items-center mb-4">
-                    <h3 class="text-dark mb-0"><strong>MY PROFILE</strong></h3>
+                   <p style="text-align:center;"> <h3 class="text-dark mb-0"><strong><?= htmlspecialchars($user_data['username'] ?? '') ?></strong></h3></p>
                 </div>
                 
                 <div class="row d-flex justify-content-center">
@@ -151,6 +151,21 @@ if (!$user_data) {
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
                         <?php endif; ?>
+                        <!-- Add this with the other alert messages in profile.php -->
+<?php if (isset($_SESSION['profile_completion_required'])): ?>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <div class="d-flex">
+            <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+            <div>
+                <h6 class="alert-heading">Profile Completion Required</h6>
+                <p class="mb-0"><?php echo $_SESSION['profile_completion_required']; ?></p>
+                <small class="text-muted">Please fill in all the required fields below to continue.</small>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php unset($_SESSION['profile_completion_required']); ?>
+<?php endif; ?>
 
                         <!-- User Credentials -->
                         <div class="profile-section">
@@ -216,11 +231,16 @@ if (!$user_data) {
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="phone"><strong>Phone Number</strong></label>
-                                                    <input class="form-control form-control-user" type="text" id="phone" name="phone" value="<?= htmlspecialchars($user_data['phone'] ?? '') ?>">
-                                                </div>
-                                            </div>
+    <div class="mb-3">
+        <label class="form-label" for="phone"><strong>Phone Number</strong></label>
+        <input class="form-control form-control-user" type="text" id="phone" name="phone" 
+               value="<?= htmlspecialchars($user_data['phone'] ?? '') ?>" 
+               pattern="[0-9]{10}" 
+               title="Please enter exactly 10 digits (e.g., 0971234567)" 
+               required>
+        <small class="form-text text-muted">Must be exactly 10 digits (e.g., 0971234567)</small>
+    </div>
+</div>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6">
@@ -350,5 +370,33 @@ if (!$user_data) {
 </div>
 <script src="assets/bootstrap/js/bootstrap.min.js"></script>
 <script src="assets/js/script.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('phone');
+    
+    phoneInput.addEventListener('input', function(e) {
+        // Remove any non-digit characters
+        let value = e.target.value.replace(/\D/g, '');
+        
+        // Limit to 10 digits
+        if (value.length > 10) {
+            value = value.substring(0, 10);
+        }
+        
+        e.target.value = value;
+    });
+    
+    // Validate phone number on form submission
+    const personalForm = document.querySelector('form[action*="profile.php"]');
+    personalForm.addEventListener('submit', function(e) {
+        const phoneValue = phoneInput.value.replace(/\D/g, '');
+        if (phoneValue.length !== 10) {
+            e.preventDefault();
+            alert('Phone number must be exactly 10 digits (e.g., 0971234567)');
+            phoneInput.focus();
+        }
+    });
+});
+</script>
 </body>
 </html>

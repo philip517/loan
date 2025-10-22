@@ -271,14 +271,14 @@ $nationality = $user_data['nationality'] ?? '';
                     <?php endif; ?>
 
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
-                        <h3 class="text-dark mb-0"><strong>LOAN APPLICATION</strong></h3>
+                        <p style="text-align:center;"><h3 class="text-dark mb-0"><strong>LOAN APPLICATION</strong></h3></p>
                     </div>
 
                     <!-- Main form that collects all data -->
                     <form method="POST" action="confirm_loan.php" class="user" id="loanApplicationForm" enctype="multipart/form-data">
                         <div class="row">
                             <div class="col-12">
-                                <ul class="nav nav-tabs" role="tablist">
+                                <ul style=" display:none;"class="nav nav-tabs" role="tablist">
                                     <li class="nav-item" role="presentation">
                                         <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1">
                                             <i class="fas fa-user me-2"></i>Personal Details

@@ -10,6 +10,35 @@ if (!$user_id) {
     exit;
 }
 
+function isUserProfileComplete($user_data) {
+    $required_fields = [
+        'first_name', 'last_name', 'email', 'phone',
+        'NRC', 'date_of_birth', 'gender', 'occupation', 'address'
+    ];
+
+    foreach ($required_fields as $field) {
+        if (empty(trim($user_data[$field] ?? ''))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Fetch user data to check completeness
+$profile_check_sql = "SELECT * FROM user_table WHERE user_id = ?";
+$profile_check_stmt = $pdo->prepare($profile_check_sql);
+$profile_check_stmt->execute([$user_id]);
+$user_profile_data = $profile_check_stmt->fetch(PDO::FETCH_ASSOC);
+
+// Redirect to profile if data is incomplete
+if (!$user_profile_data || !isUserProfileComplete($user_profile_data)) {
+    $_SESSION['profile_completion_required'] = "Please complete your profile data before accessing the dashboard.";
+    header("Location: profile.php");
+    exit;
+}
+
+
+
 // Fetch user's approved loans data
 $loan_sql = "SELECT l.*, u.first_name, u.last_name 
              FROM loan l 
