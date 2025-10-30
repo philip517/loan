@@ -49,7 +49,7 @@ function displayLoans($loans) {
         $full_name = htmlspecialchars($loan['first_name'] . ' ' . $loan['last_name']);
         $occupation = htmlspecialchars($loan['occupation'] ?? 'Not specified');
         $collateral = htmlspecialchars($loan['collateral_name'] ?? 'No collateral');
-        $duration = htmlspecialchars($loan['duration'] . ' months');
+        $duration = htmlspecialchars($loan['duration'] . ' week(s)');
         $amount = 'K' . number_format($loan['amount'], 2);
         $loan_id = $loan['loan_id'];
         

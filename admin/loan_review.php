@@ -153,7 +153,7 @@ function displayLoanDetails($loan) {
                         </div>
                         <div class="card-body">
                             <p><strong>Loan Amount:</strong> K' . number_format($loan['amount'] ?? 0, 2) . '</p>
-                            <p><strong>Duration:</strong> ' . ($loan['duration'] ?? 0) . ' months</p>
+                            <p><strong>Duration:</strong> ' . ($loan['duration'] ?? 0) . ' week(s)</p>
                             <p><strong>Interest:</strong> K' . number_format($loan['interest'] ?? 0, 2) . ' (' . number_format($interest_percentage, 1) . '%)</p>
                             <p><strong>Total Repayment:</strong> K' . number_format($total_repayment, 2) . '</p>
                             <p><strong>Start Date:</strong> ' . ($loan['loan_start_date'] ?? 'N/A') . '</p>
