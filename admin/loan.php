@@ -41,11 +41,12 @@ try {
 // Function to display loan data in table rows
 function displayLoans($loans) {
     if (empty($loans)) {
-        echo '<tr><td colspan="5" class="text-center">No loans found</td></tr>';
+        echo '<tr><td colspan="6" class="text-center">No loans found</td></tr>';
         return;
     }
     
     foreach ($loans as $loan) {
+        $loan_number = htmlspecialchars($loan['loan_number'] ?? 'N/A');
         $full_name = htmlspecialchars($loan['first_name'] . ' ' . $loan['last_name']);
         $occupation = htmlspecialchars($loan['occupation'] ?? 'Not specified');
         $collateral = htmlspecialchars($loan['collateral_name'] ?? 'No collateral');
@@ -55,6 +56,7 @@ function displayLoans($loans) {
         
         echo "
         <tr style='cursor: pointer;' onclick='viewLoanDetails($loan_id)'>
+            <td><strong>$loan_number</strong></td>
             <td>$full_name</td>
             <td>$occupation</td>
             <td>$collateral</td>
@@ -81,7 +83,16 @@ function getLoanCount($loans) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
+       <style>
+
+    
+    .sticky-footer {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 60px;
+        z-index: 100;
+    }
         .clickable-row:hover {
             background-color: #f8f9fa !important;
             transform: translateY(-1px);
@@ -89,6 +100,68 @@ function getLoanCount($loans) {
         }
         .table tbody tr {
             transition: all 0.2s ease;
+        }
+        .loan-number {
+            font-weight: 600;
+            color: #2c3e50;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Centered Tab Styling */
+        .nav-tabs {
+            border-bottom: 2px solid #dee2e6;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-tabs .nav-item {
+            margin: 0 5px;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #495057;
+            font-weight: 600;
+            border: 1px solid transparent;
+            border-radius: 8px 8px 0 0;
+            padding: 12px 20px;
+            transition: all 0.3s ease;
+            text-align: center;
+            min-width: 150px;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: #ffffff;
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        
+        .nav-tabs .nav-link:not(.active) {
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+        }
+        
+        .nav-tabs .nav-link:not(.active):hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .nav-tabs .nav-item {
+                width: 100%;
+                margin: 2px 0;
+            }
+            
+            .nav-tabs .nav-link {
+                border-radius: 8px;
+                min-width: 200px;
+            }
         }
     </style>
 </head>
@@ -99,7 +172,6 @@ function getLoanCount($loans) {
         <div class="d-flex flex-column" id="content-wrapper">
             <div id="content" style="background: rgba(255,255,255,0.09);opacity: 1;filter: blur(0px);"> 
                 <div class="container-fluid" style="margin-top: 100px;">
-                    <h3 class="text-dark mb-4">Loans Management</h3>
                     <div>
                         <ul class="nav nav-tabs" role="tablist">
                             <li class="nav-item" role="presentation">
@@ -132,7 +204,8 @@ function getLoanCount($loans) {
                                                                 <table class="table my-0 table-hover">
                                                                     <thead>
                                                                         <tr>
-                                                                            <th>Name</th>
+                                                                            <th>Loan Number</th>
+                                                                            <th>Applicant Name</th>
                                                                             <th>Occupation</th>
                                                                             <th>Collateral</th>
                                                                             <th>Duration</th>
@@ -166,7 +239,8 @@ function getLoanCount($loans) {
                                                                 <table class="table my-0 table-hover">
                                                                     <thead>
                                                                         <tr>
-                                                                            <th>Name</th>
+                                                                            <th>Loan Number</th>
+                                                                            <th>Applicant Name</th>
                                                                             <th>Occupation</th>
                                                                             <th>Collateral</th>
                                                                             <th>Duration</th>
@@ -200,7 +274,8 @@ function getLoanCount($loans) {
                                                                 <table class="table my-0 table-hover">
                                                                     <thead>
                                                                         <tr>
-                                                                            <th>Name</th>
+                                                                            <th>Loan Number</th>
+                                                                            <th>Applicant Name</th>
                                                                             <th>Occupation</th>
                                                                             <th>Collateral</th>
                                                                             <th>Duration</th>
@@ -226,7 +301,8 @@ function getLoanCount($loans) {
             </div>
             <footer class="bg-white sticky-footer">
                 <div class="container my-auto">
-                    <div class="text-center my-auto copyright"><span>Copyright © Brand 2025</span></div>
+                                        <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
+
                 </div>
             </footer>
         </div>
