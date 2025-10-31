@@ -39,7 +39,7 @@ try {
 }
 
 // Function to display loan data in table rows
-function displayLoans($loans) {
+function displayLoans($loans, $tableId) {
     if (empty($loans)) {
         echo '<tr><td colspan="6" class="text-center">No loans found</td></tr>';
         return;
@@ -83,9 +83,13 @@ function getLoanCount($loans) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-       <style>
+ <style>
+    body {
+        position: relative;
+        min-height: 100vh;
+        padding-bottom: 60px; /* Height of footer */
+    }
 
-    
     .sticky-footer {
         position: absolute;
         bottom: 0;
@@ -93,77 +97,119 @@ function getLoanCount($loans) {
         height: 60px;
         z-index: 100;
     }
-        .clickable-row:hover {
-            background-color: #f8f9fa !important;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .table tbody tr {
-            transition: all 0.2s ease;
-        }
-        .loan-number {
-            font-weight: 600;
-            color: #2c3e50;
-            font-family: 'Courier New', monospace;
-        }
-        
-        /* Centered Tab Styling */
+    
+    .clickable-row:hover {
+        background-color: #f8f9fa !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .loan-number {
+        font-weight: 600;
+        color: #2c3e50;
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* Centered Tab Styling */
+    .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .nav-tabs .nav-item {
+        margin: 0 5px;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 600;
+        border: 1px solid transparent;
+        border-radius: 8px 8px 0 0;
+        padding: 12px 20px;
+        transition: all 0.3s ease;
+        text-align: center;
+        min-width: 150px;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #ffffff;
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    
+    .nav-tabs .nav-link:not(.active) {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+    }
+    
+    .nav-tabs .nav-link:not(.active):hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    /* Centered Search box styling */
+    .search-container {
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .search-box {
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+    }
+    
+    .card-header .row {
+        align-items: center;
+    }
+    
+    /* For the pending tab where you removed the title */
+    .card-header .row .col-md-6:only-child {
+        width: 100%;
+        text-align: center;
+    }
+    
+    /* Responsive design for smaller screens */
+    @media (max-width: 768px) {
         .nav-tabs {
-            border-bottom: 2px solid #dee2e6;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: center;
         }
         
         .nav-tabs .nav-item {
-            margin: 0 5px;
+            width: 100%;
+            margin: 2px 0;
         }
         
         .nav-tabs .nav-link {
-            color: #495057;
-            font-weight: 600;
-            border: 1px solid transparent;
-            border-radius: 8px 8px 0 0;
-            padding: 12px 20px;
-            transition: all 0.3s ease;
-            text-align: center;
-            min-width: 150px;
+            border-radius: 8px;
+            min-width: 200px;
         }
         
-        .nav-tabs .nav-link.active {
-            color: #ffffff;
-            background-color: #007bff;
-            border-color: #007bff;
+        .search-box {
+            max-width: 100%;
         }
         
-        .nav-tabs .nav-link:not(.active) {
-            background-color: #f8f9fa;
-            border-color: #dee2e6;
+        .card-header .row {
+            flex-direction: column;
+            gap: 15px;
         }
         
-        .nav-tabs .nav-link:not(.active):hover {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
+        .card-header .row .col-md-6 {
+            width: 100%;
+            text-align: center !important;
         }
-        
-        /* Responsive design for smaller screens */
-        @media (max-width: 768px) {
-            .nav-tabs {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .nav-tabs .nav-item {
-                width: 100%;
-                margin: 2px 0;
-            }
-            
-            .nav-tabs .nav-link {
-                border-radius: 8px;
-                min-width: 200px;
-            }
-        }
-    </style>
+    }
+</style>
+  
 </head>
 
 <body id="page-top">
@@ -199,9 +245,21 @@ function getLoanCount($loans) {
                                             <div class="row">
                                                 <div class="col-lg-12">
                                                     <div class="card shadow">
+                                                        <div class="card-header py-3">
+                                                            <div class="row">
+                                                                
+                                                                <div class="col-md-6">
+                                                                    <div class="text-md-end search-container">
+                                                                        <input type="search" class="form-control form-control-sm search-box" 
+                                                                               placeholder="Search pending loans..." 
+                                                                               id="searchPending">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                         <div class="card-body">
                                                             <div class="table-responsive mt-2">
-                                                                <table class="table my-0 table-hover">
+                                                                <table class="table my-0 table-hover" id="pendingTable">
                                                                     <thead>
                                                                         <tr>
                                                                             <th>Loan Number</th>
@@ -213,7 +271,7 @@ function getLoanCount($loans) {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        <?php displayLoans($pending_loans); ?>
+                                                                        <?php displayLoans($pending_loans, 'pendingTable'); ?>
                                                                     </tbody>
                                                                 </table>
                                                             </div>
@@ -234,9 +292,21 @@ function getLoanCount($loans) {
                                             <div class="row">
                                                 <div class="col-lg-12">
                                                     <div class="card shadow">
+                                                        <div class="card-header py-3">
+                                                            <div class="row">
+                                                              
+                                                                <div class="col-md-6">
+                                                                    <div class="text-md-end search-container">
+                                                                        <input type="search" class="form-control form-control-sm search-box" 
+                                                                               placeholder="Search approved loans..." 
+                                                                               id="searchApproved">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                         <div class="card-body">
                                                             <div class="table-responsive mt-2">
-                                                                <table class="table my-0 table-hover">
+                                                                <table class="table my-0 table-hover" id="approvedTable">
                                                                     <thead>
                                                                         <tr>
                                                                             <th>Loan Number</th>
@@ -248,7 +318,7 @@ function getLoanCount($loans) {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        <?php displayLoans($approved_loans); ?>
+                                                                        <?php displayLoans($approved_loans, 'approvedTable'); ?>
                                                                     </tbody>
                                                                 </table>
                                                             </div>
@@ -269,9 +339,21 @@ function getLoanCount($loans) {
                                             <div class="row">
                                                 <div class="col-lg-12">
                                                     <div class="card shadow">
+                                                        <div class="card-header py-3">
+                                                            <div class="row">
+                                                                
+                                                                <div class="col-md-6">
+                                                                    <div class="text-md-end search-container">
+                                                                        <input type="search" class="form-control form-control-sm search-box" 
+                                                                               placeholder="Search rejected loans..." 
+                                                                               id="searchRejected">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                         <div class="card-body">
                                                             <div class="table-responsive mt-2">
-                                                                <table class="table my-0 table-hover">
+                                                                <table class="table my-0 table-hover" id="rejectedTable">
                                                                     <thead>
                                                                         <tr>
                                                                             <th>Loan Number</th>
@@ -283,7 +365,7 @@ function getLoanCount($loans) {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        <?php displayLoans($rejected_loans); ?>
+                                                                        <?php displayLoans($rejected_loans, 'rejectedTable'); ?>
                                                                     </tbody>
                                                                 </table>
                                                             </div>
@@ -301,8 +383,7 @@ function getLoanCount($loans) {
             </div>
             <footer class="bg-white sticky-footer">
                 <div class="container my-auto">
-                                        <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
-
+                    <div class="text-center my-auto copyright"><span>Copyright © SEFA SATTY 2025</span></div>
                 </div>
             </footer>
         </div>
@@ -313,6 +394,28 @@ function getLoanCount($loans) {
         function viewLoanDetails(loanId) {
             // Redirect to loan details page with the loan ID
             window.location.href = 'loan_review.php?loan_id=' + loanId;
+        }
+        
+        // Search functionality for all tables
+        function initializeSearch(searchInputId, tableId) {
+            const searchInput = document.getElementById(searchInputId);
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const table = document.getElementById(tableId);
+                    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                    
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        const text = row.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
+                });
+            }
         }
         
         // Optional: Add keyboard navigation support
@@ -333,6 +436,33 @@ function getLoanCount($loans) {
                 // Make rows focusable for accessibility
                 row.setAttribute('tabindex', '0');
                 row.classList.add('clickable-row');
+            });
+            
+            // Initialize search functionality for all tabs
+            initializeSearch('searchPending', 'pendingTable');
+            initializeSearch('searchApproved', 'approvedTable');
+            initializeSearch('searchRejected', 'rejectedTable');
+            
+            // Clear search when switching tabs
+            document.querySelectorAll('.nav-link').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Clear all search inputs
+                    document.getElementById('searchPending').value = '';
+                    document.getElementById('searchApproved').value = '';
+                    document.getElementById('searchRejected').value = '';
+                    
+                    // Show all rows again
+                    const tables = ['pendingTable', 'approvedTable', 'rejectedTable'];
+                    tables.forEach(tableId => {
+                        const table = document.getElementById(tableId);
+                        if (table) {
+                            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                            for (let i = 0; i < rows.length; i++) {
+                                rows[i].style.display = '';
+                            }
+                        }
+                    });
+                });
             });
         });
     </script>
