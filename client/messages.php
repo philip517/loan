@@ -281,7 +281,7 @@ try {
                                         <a href="apply_loan.php" class="btn btn-outline-primary btn-sm">
                                             <i class="fas fa-plus me-1"></i>Apply for New Loan
                                         </a>
-                                        <a href="my_loans.php" class="btn btn-outline-success btn-sm">
+                                        <a href="loan.php" class="btn btn-outline-success btn-sm">
                                             <i class="fas fa-list me-1"></i>View My Loans
                                         </a>
                                         <a href="index.php" class="btn btn-outline-info btn-sm">

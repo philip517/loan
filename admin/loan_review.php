@@ -15,6 +15,32 @@ if (!$loan_id) {
     exit;
 }
 
+// Check if loan_requests table exists, create if not
+try {
+    $check_table = $pdo->query("SELECT 1 FROM loan_requests LIMIT 1");
+} catch (PDOException $e) {
+    // Create the table if it doesn't exist
+    $create_table_sql = "CREATE TABLE IF NOT EXISTS `loan_requests` (
+        `request_id` INT(11) NOT NULL AUTO_INCREMENT,
+        `loan_id` INT(11) NOT NULL,
+        `admin_id` INT(11) NOT NULL,
+        `request_message` TEXT NOT NULL,
+        `status` ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
+        `admin_notes` TEXT NULL,
+        `date_of_request` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        `date_updated` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`request_id`),
+        FOREIGN KEY (`loan_id`) REFERENCES `loan`(`loan_id`) ON DELETE CASCADE,
+        FOREIGN KEY (`admin_id`) REFERENCES `user_table`(`user_id`) ON DELETE CASCADE,
+        INDEX `idx_loan_id` (`loan_id`),
+        INDEX `idx_admin_id` (`admin_id`),
+        INDEX `idx_status` (`status`),
+        INDEX `idx_date_request` (`date_of_request`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
+    
+    $pdo->exec($create_table_sql);
+}
+
 // Debug: Check if loan_reviews table exists
 try {
     $check_table = $pdo->query("SELECT 1 FROM loan_reviews LIMIT 1");
@@ -162,6 +188,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     }
 }
 
+// Handle request submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_request'])) {
+    try {
+        $request_message = $_POST['request_message'] ?? '';
+        $admin_id = $_SESSION['user_id'] ?? null;
+        
+        if (!$admin_id) {
+            throw new Exception("Admin ID not found in session. Please log in again.");
+        }
+        
+        if (empty($request_message)) {
+            throw new Exception("Request message cannot be empty.");
+        }
+
+        $sql = "INSERT INTO loan_requests (loan_id, admin_id, request_message, status) 
+                VALUES (?, ?, ?, 'pending')";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$loan_id, $admin_id, $request_message]);
+        
+        $_SESSION['success_message'] = "Request created successfully!";
+        header("Location: loan_review.php?loan_id=" . $loan_id);
+        exit;
+        
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = "Failed to create request: " . $e->getMessage();
+    }
+}
+
 // Fetch specific loan details with user and kin information
 try {
     $loan_sql = "SELECT l.*, u.first_name, u.last_name, u.phone, u.NRC, u.email, u.occupation, u.address,
@@ -225,320 +279,7 @@ function getAllLoanReviews($pdo, $loan_id) {
 }
 
 // Function to display loan details
-function displayLoanDetails($loan, $pdo) {
-    $status_color = match($loan['status']) {
-        'approved' => 'success',
-        'rejected' => 'danger',
-        'pending' => 'warning',
-        default => 'secondary'
-    };
-    
-    $status_bg = match($loan['status']) {
-        'approved' => 'rgba(28,200,138,0.14)',
-        'rejected' => 'rgba(231,76,60,0.14)',
-        'pending' => 'rgba(246,194,62,0.13)',
-        default => 'rgba(108,117,125,0.13)'
-    };
-    
-    // Convert BLOB images to base64 for display
-    $user_id_image_src = $loan['user_id_image'] ? 'data:image/jpeg;base64,' . base64_encode($loan['user_id_image']) : 'assets/img/dogs/image3.jpeg';
-    $image1_src = $loan['image1'] ? 'data:image/jpeg;base64,' . base64_encode($loan['image1']) : 'assets/img/dogs/image3.jpeg';
-    $image2_src = $loan['image2'] ? 'data:image/jpeg;base64,' . base64_encode($loan['image2']) : 'assets/img/dogs/image3.jpeg';
-    
-    // Calculate interest percentage and total repayment
-    $interest_percentage = $loan['amount'] > 0 ? ($loan['interest'] / $loan['amount']) * 100 : 0;
-    $total_repayment = $loan['amount'] + $loan['interest'];
-    
-    // Get loan number or display placeholder
-    $loan_number = $loan['loan_number'] ?? 'N/A';
-    
-    // Get review information if available
-    $review_info = getLoanReviewInfo($pdo, $loan['loan_id']);
-    $review_section = '';
-    
-    if ($review_info) {
-        $decision_badge = match($review_info['decision']) {
-            'approved' => '<span class="badge bg-success">Approved</span>',
-            'rejected' => '<span class="badge bg-danger">Rejected</span>',
-            'pending' => '<span class="badge bg-warning">Pending</span>',
-            default => '<span class="badge bg-secondary">' . $review_info['decision'] . '</span>'
-        };
-        
-        $admin_name_display = $review_info['admin_name'] ?? 'Admin #' . $review_info['admin_id'];
-        
-        $review_section = '
-        <div class="row">
-            <div class="col-12">
-                <div class="card border-info shadow-sm mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Latest Review Decision</h6>
-                    </div>
-                    <div class="card-body">';
-        
-        // Display admin notes if available
-        if (!empty($review_info['admin_notes'])) {
-            $review_section .= '
-                        <div class="mb-3">
-                            <strong>Admin Notes:</strong>
-                            <div class="alert alert-light mt-2">
-                                ' . nl2br(htmlspecialchars($review_info['admin_notes'])) . '
-                            </div>
-                        </div>';
-        }
-        
-        $review_section .= '
-                        <div class="row">
-                            <div class="col-md-3">
-                                <p class="mb-2"><strong>Decision:</strong><br>' . $decision_badge . '</p>
-                            </div>
-                            <div class="col-md-3">
-                                <p class="mb-2"><strong>Reviewed By:</strong><br>' . $admin_name_display . '</p>
-                            </div>
-                            <div class="col-md-3">
-                                <p class="mb-2"><strong>Review Date:</strong><br>' . date('F j, Y g:i A', strtotime($review_info['review_date'])) . '</p>
-                            </div>
-                            <div class="col-md-3">
-                                <p class="mb-2"><strong>Loan Number:</strong><br>' . $review_info['loan_number'] . '</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>';
-    }
-    
-    // Get ALL past loan reviews for this loan
-    $all_reviews = getAllLoanReviews($pdo, $loan['loan_id']);
-    $past_reviews_section = '';
-    
-    // ALWAYS show the past reviews card, even if empty
-    $past_reviews_section = '
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-warning shadow-sm mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="fas fa-history me-2"></i>Past Loan Reviews</h6>
-                </div>
-                <div class="card-body">';
-    
-    if (!empty($all_reviews)) {
-        $past_reviews_section .= '
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Review Date</th>
-                                    <th>Decision</th>
-                                    <th>Reviewed By</th>
-                                    <th>Admin Notes</th>
-                                </tr>
-                            </thead>
-                            <tbody>';
-        
-        foreach ($all_reviews as $review) {
-            $decision_badge = match($review['decision']) {
-                'approved' => '<span class="badge bg-success">Approved</span>',
-                'rejected' => '<span class="badge bg-danger">Rejected</span>',
-                'pending' => '<span class="badge bg-warning">Pending</span>',
-                default => '<span class="badge bg-secondary">' . $review['decision'] . '</span>'
-            };
-            
-            $admin_name_display = $review['admin_name'] ?? 'Admin #' . $review['admin_id'];
-            $notes_preview = !empty($review['admin_notes']) 
-                ? '<span class="text-muted" title="' . htmlspecialchars($review['admin_notes']) . '">' 
-                  . (strlen($review['admin_notes']) > 50 ? substr($review['admin_notes'], 0, 50) . '...' : $review['admin_notes']) 
-                  . '</span>'
-                : '<span class="text-muted">No notes</span>';
-            
-            $past_reviews_section .= '
-                                <tr>
-                                    <td>' . date('M j, Y g:i A', strtotime($review['review_date'])) . '</td>
-                                    <td>' . $decision_badge . '</td>
-                                    <td>' . $admin_name_display . '</td>
-                                    <td>' . $notes_preview . '</td>
-                                </tr>';
-        }
-        
-        $past_reviews_section .= '
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="mt-2 text-muted small">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Showing ' . count($all_reviews) . ' review(s) for this loan
-                    </div>';
-    } else {
-        $past_reviews_section .= '
-                    <div class="text-center py-4">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted mb-0">No past reviews found for this loan.</p>
-                        <small class="text-muted">Reviews will appear here once decisions are made.</small>
-                    </div>';
-    }
-    
-    $past_reviews_section .= '
-                </div>
-            </div>
-        </div>
-    </div>';
-    
-    return '
-    <div class="card shadow-lg border-0 mb-4">
-        <div class="card-header bg-white py-3">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h4 class="mb-1">Loan Application Review</h4>
-                    <div class="d-flex align-items-center">
-                        <p class="text-muted mb-0 me-3">Application Date: ' . ($loan['loan_start_date'] ?? 'N/A') . '</p>
-                        <span class="text-primary fw-bold fs-5">
-                            <i class="fas fa-hashtag me-1"></i>Loan Number: ' . $loan_number . '
-                        </span>
-                    </div>
-                </div>
-                <div class="col-auto">
-                    <span class="badge bg-' . $status_color . ' fs-6">' . strtoupper($loan['status'] ?? 'PENDING') . '</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card-body" style="background: ' . $status_bg . ';">
-            ' . $review_section . '
-            ' . $past_reviews_section . '
-            
-            <div class="row">
-                <!-- Client Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fas fa-user me-2"></i>Client Information</h5>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Name:</strong> ' . ($loan['first_name'] ?? 'N/A') . ' ' . ($loan['last_name'] ?? 'N/A') . '</p>
-                            <p><strong>NRC:</strong> ' . ($loan['NRC'] ?? 'N/A') . '</p>
-                            <p><strong>Phone:</strong> ' . ($loan['phone'] ?? 'N/A') . '</p>
-                            <p><strong>Email:</strong> ' . ($loan['email'] ?? 'N/A') . '</p>
-                            <p><strong>Occupation:</strong> ' . ($loan['occupation'] ?? 'N/A') . '</p>
-                            <p><strong>Address:</strong> ' . ($loan['address'] ?? 'N/A') . '</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Next of Kin -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Next of Kin</h5>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Name:</strong> ' . ($loan['kin_first_name'] ?? 'N/A') . ' ' . ($loan['kin_last_name'] ?? 'N/A') . '</p>
-                            <p><strong>NRC:</strong> ' . ($loan['kin_nrc'] ?? 'N/A') . '</p>
-                            <p><strong>Phone:</strong> ' . ($loan['kin_phone'] ?? 'N/A') . '</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Loan Details -->
-            <div class="row">
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Loan Details</h5>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Loan Amount:</strong> K' . number_format($loan['amount'] ?? 0, 2) . '</p>
-                            <p><strong>Duration:</strong> ' . ($loan['duration'] ?? 0) . ' week(s)</p>
-                            <p><strong>Interest:</strong> K' . number_format($loan['interest'] ?? 0, 2) . ' (' . number_format($interest_percentage, 1) . '%)</p>
-                            <p><strong>Total Repayment:</strong> K' . number_format($total_repayment, 2) . '</p>
-                            <p><strong>Start Date:</strong> ' . ($loan['loan_start_date'] ?? 'N/A') . '</p>
-                            <p><strong>End Date:</strong> ' . ($loan['loan_end_date'] ?? 'N/A') . '</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Collateral Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-warning text-dark">
-                            <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Collateral Information</h5>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Collateral Item:</strong> ' . ($loan['collateral_name'] ?? 'N/A') . '</p>
-                            <div class="row mt-3">
-                                <div class="col-md-4 text-center">
-                                    <h6>Collateral Image 1</h6>
-                                    <img src="' . $image1_src . '" class="img-fluid clickable-image" 
-                                         style="max-height: 150px; max-width: 100%; cursor: pointer;" 
-                                         alt="Collateral Image 1" 
-                                         onclick="openImageModal(\'' . $image1_src . '\', \'Collateral Image 1\')">
-                                    <p class="small text-muted mt-2">Front View</p>
-                                </div>
-                                <div class="col-md-4 text-center">
-                                    <h6>Collateral Image 2</h6>
-                                    <img src="' . $image2_src . '" class="img-fluid clickable-image" 
-                                         style="max-height: 150px; max-width: 100%; cursor: pointer;" 
-                                         alt="Collateral Image 2" 
-                                         onclick="openImageModal(\'' . $image2_src . '\', \'Collateral Image 2\')">
-                                    <p class="small text-muted mt-2">Alternate View</p>
-                                </div>
-                                <div class="col-md-4 text-center">
-                                    <h6>User ID Image</h6>
-                                    <img src="' . $user_id_image_src . '" class="img-fluid clickable-image" 
-                                         style="max-height: 150px; max-width: 100%; cursor: pointer;" 
-                                         alt="User ID Image" 
-                                         onclick="openImageModal(\'' . $user_id_image_src . '\', \'User ID Document\')">
-                                    <p class="small text-muted mt-2">Identification</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Admin Actions -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-dark text-white">
-                            <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Actions</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST" action="" class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label"><strong>Update Loan Status</strong></label>
-                                    <select class="form-select" name="status" required>
-                                        <option value="pending" ' . ($loan['status'] == 'pending' ? 'selected' : '') . '>Pending</option>
-                                        <option value="approved" ' . ($loan['status'] == 'approved' ? 'selected' : '') . '>Approve</option>
-                                        <option value="rejected" ' . ($loan['status'] == 'rejected' ? 'selected' : '') . '>Reject</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label"><strong>Admin Notes</strong></label>
-                                    <textarea class="form-control" name="admin_notes" rows="2" 
-                                              placeholder="Add notes about this loan decision...">' . ($review_info['admin_notes'] ?? '') . '</textarea>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button type="submit" name="update_status" class="btn btn-primary w-100">
-                                        <i class="fas fa-save me-2"></i>Update
-                                    </button>
-                                </div>
-                            </form>
-                            
-                            <div class="mt-3 text-end">
-                                <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#messageModal">
-                                    <i class="fas fa-envelope me-2"></i>Send Message to Client
-                                </button>
-                                <a href="loan.php" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left me-2"></i>Back to Loans
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>';
-}
+require 'loan_details.php';
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
@@ -552,55 +293,9 @@ function displayLoanDetails($loan, $pdo) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
-        .clickable-image {
-            transition: transform 0.2s ease-in-out;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-        }
-        .clickable-image:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            border-color: #007bff;
-        }
-        .modal-image {
-            max-width: 100%;
-            max-height: 80vh;
-            width: auto;
-            height: auto;
-        }
-        .image-modal-content {
-            background: transparent;
-            border: none;
-        }
-        .card-header {
-            font-weight: 600;
-        }
-        .image-section {
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-        }
-        .image-section:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-            margin-bottom: 0;
-        }
-        .loan-number-display {
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            color: #2c3e50;
-            background: rgba(52, 152, 219, 0.1);
-            padding: 4px 8px;
-            border-radius: 4px;
-            border-left: 3px solid #3498db;
-        }
-        .table-sm th,
-        .table-sm td {
-            padding: 0.5rem;
-            font-size: 0.875rem;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/loan_review.css">
+
+    
 </head>
 
 <body id="page-top">
@@ -673,6 +368,48 @@ function displayLoanDetails($loan, $pdo) {
                             <div class="modal-footer">
                                 <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
                                 <button class="btn btn-primary" type="submit">Send Message</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Modal -->
+            <div class="modal fade" role="dialog" tabindex="-1" id="requestModal">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <form method="POST" action="">
+                            <div class="modal-header bg-warning text-dark">
+                                <h4 class="modal-title"><i class="fas fa-hand-holding-usd me-2"></i>Create Loan Request</h4>
+                                <button class="btn-close" type="button" aria-label="Close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="create_request" value="1">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Request Message</label>
+                                    <textarea class="form-control" name="request_message" rows="6" 
+                                              placeholder="Describe your request in detail. Be specific about what information or action is needed..." required></textarea>
+                                    <div class="form-text">
+                                        Examples: "Need additional collateral documentation", "Require clarification on employment details", 
+                                        "Request updated bank statements", etc.
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <small>
+                                        <i class="fas fa-info-circle"></i> 
+                                        This request will be associated with Loan #<strong><?php echo $loan['loan_number'] ?? 'N/A'; ?></strong>
+                                        for client <strong><?php echo $loan['first_name'] . ' ' . $loan['last_name']; ?></strong>
+                                        <br>Request will be recorded in the system for tracking and follow-up.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+                                <button class="btn btn-warning" type="submit">
+                                    <i class="fas fa-paper-plane me-2"></i>Create Request
+                                </button>
                             </div>
                         </form>
                     </div>

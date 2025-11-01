@@ -35,13 +35,13 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
             </a>
             <hr class="my-0 sidebar-divider">
             <ul class="navbar-nav text-light" id="accordionSidebar">
-                <li class="nav-item"><a class="nav-link" href="index.php"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-                <li class="nav-item"><a class="nav-link active" href="profile.php"><i class="fas fa-user"></i><span>Profile</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="loan.php"><i class="fas fa-user"></i><span>Loans</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="table.php"><i class="fas fa-table"></i><span>Staff</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="user.php"><i class="fas fa-table"></i><span>Clients</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-table"></i><span>Messages</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="add_user.php"><i class="fas fa-user-circle"></i><span>Add User</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="index.php"><i class="fas fa-home me-2"></i><span>Dashboard</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="loan.php"><i class="fas fa-hand-holding-usd"></i><span>Loans</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="loan_request.php"><i class="fas fa-envelope"></i><span>Loan Request</span></a></li>
+                <li class="nav-item"><a class="nav-link active" href="profile.php"><i class="fas fa-user-circle"></i><span>Profile</span></a></li>
+                <li class="nav-item"><a class="nav-link active" href="overdue.php"><i class="fas fa-user-circle"></i><span>Overdue</span></a></li>
+
             </ul>
         </div>
     </nav>
@@ -75,7 +75,6 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                                                     <div class="bg-primary icon-circle"><i class="fas fa-envelope text-white"></i></div>
                                                 </div>
                                                 <div>
-                                                    <span class="small text-gray-500"><?php echo $time_ago; ?></span>
                                                     <p class="mb-0 small"><strong><?php echo htmlspecialchars($message['topic']); ?></strong></p>
                                                     <p class="mb-0 small text-truncate" style="max-width: 200px;">
                                                         From: <?php echo htmlspecialchars($client_name); ?> | <?php echo $loan_info; ?>
@@ -90,7 +89,7 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                         </li>
                         <li class="nav-item dropdown no-arrow">
                             <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="d-none d-lg-inline me-2 text-gray-600 small"><?php echo $user['first_name']." ".$user['last_name'];?></span></a>
-                                <div class="dropdown-menu shadow dropdown-menu-end animated--grow-in"><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Profile</a><a class="dropdown-item" href="message.php"><i class="fas fa-envelope me-2 fa-sm fa-fw text-gray-400" style="font-size: 12px;"></i>&nbsp;Messages</a><a class="dropdown-item" href="user.php"><i class="fas fa-list me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Clients</a>
+                                <div class="dropdown-menu shadow dropdown-menu-end animated--grow-in"><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Profile</a><a class="dropdown-item" href="message.php"><i class="fas fa-envelope me-2 fa-sm fa-fw text-gray-400" style="font-size: 12px;"></i>&nbsp;Messages</a>
                                     <div class="dropdown-divider"></div><a class="dropdown-item" href="../index.php"  ><i class="fas fa-sign-out-alt me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Logout</a>
                                 </div>
                             </div>
@@ -99,38 +98,7 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                 </div>
             </nav>
 
-<?php
-// // Function to display time elapsed in a human-readable format
-// function time_elapsed_string($datetime, $full = false) {
-//     $now = new DateTime;
-//     $ago = new DateTime($datetime);
-//     $diff = $now->diff($ago);
 
-//     $diff->w = floor($diff->d / 7);
-//     $diff->d -= $diff->w * 7;
-
-//     $string = array(
-//         'y' => 'year',
-//         'm' => 'month',
-//         'w' => 'week',
-//         'd' => 'day',
-//         'h' => 'hour',
-//         'i' => 'minute',
-//         's' => 'second',
-//     );
-    
-//     foreach ($string as $k => &$v) {
-//         if ($diff->$k) {
-//             $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
-//         } else {
-//             unset($string[$k]);
-//         }
-//     }
-
-//     if (!$full) $string = array_slice($string, 0, 1);
-//     return $string ? implode(', ', $string) . ' ago' : 'just now';
-// }
-?>
 
 <script>
     // Get the current page filename

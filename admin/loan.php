@@ -41,7 +41,7 @@ try {
 // Function to display loan data in table rows
 function displayLoans($loans, $tableId) {
     if (empty($loans)) {
-        echo '<tr><td colspan="6" class="text-center">No loans found</td></tr>';
+        echo '<tr><td colspan="7" class="text-center">No loans found</td></tr>';
         return;
     }
     
@@ -52,7 +52,11 @@ function displayLoans($loans, $tableId) {
         $collateral = htmlspecialchars($loan['collateral_name'] ?? 'No collateral');
         $duration = htmlspecialchars($loan['duration'] . ' week(s)');
         $amount = 'K' . number_format($loan['amount'], 2);
+        $loan_date = htmlspecialchars($loan['loan_start_date'] ?? 'N/A');
         $loan_id = $loan['loan_id'];
+        
+        // Format date for better display
+        $formatted_date = $loan_date !== 'N/A' ? date('M j, Y', strtotime($loan_date)) : 'N/A';
         
         echo "
         <tr style='cursor: pointer;' onclick='viewLoanDetails($loan_id)'>
@@ -62,6 +66,7 @@ function displayLoans($loans, $tableId) {
             <td>$collateral</td>
             <td>$duration</td>
             <td>$amount</td>
+            <td>$formatted_date</td>
         </tr>";
     }
 }
@@ -83,132 +88,9 @@ function getLoanCount($loans) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
- <style>
-    body {
-        position: relative;
-        min-height: 100vh;
-        padding-bottom: 60px; /* Height of footer */
-    }
+    <link rel="stylesheet" href="assets/css/loan.css">
 
-    .sticky-footer {
-        position: absolute;
-        bottom: 0;
-        width: 100%;
-        height: 60px;
-        z-index: 100;
-    }
-    
-    .clickable-row:hover {
-        background-color: #f8f9fa !important;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-    
-    .loan-number {
-        font-weight: 600;
-        color: #2c3e50;
-        font-family: 'Courier New', monospace;
-    }
-    
-    /* Centered Tab Styling */
-    .nav-tabs {
-        border-bottom: 2px solid #dee2e6;
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .nav-tabs .nav-item {
-        margin: 0 5px;
-    }
-    
-    .nav-tabs .nav-link {
-        color: #495057;
-        font-weight: 600;
-        border: 1px solid transparent;
-        border-radius: 8px 8px 0 0;
-        padding: 12px 20px;
-        transition: all 0.3s ease;
-        text-align: center;
-        min-width: 150px;
-    }
-    
-    .nav-tabs .nav-link.active {
-        color: #ffffff;
-        background-color: #007bff;
-        border-color: #007bff;
-    }
-    
-    .nav-tabs .nav-link:not(.active) {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
-    }
-    
-    .nav-tabs .nav-link:not(.active):hover {
-        background-color: #e9ecef;
-        border-color: #adb5bd;
-    }
-    
-    /* Centered Search box styling */
-    .search-container {
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: center;
-        width: 100%;
-    }
-    
-    .search-box {
-        max-width: 400px;
-        width: 100%;
-        text-align: center;
-    }
-    
-    .card-header .row {
-        align-items: center;
-    }
-    
-    /* For the pending tab where you removed the title */
-    .card-header .row .col-md-6:only-child {
-        width: 100%;
-        text-align: center;
-    }
-    
-    /* Responsive design for smaller screens */
-    @media (max-width: 768px) {
-        .nav-tabs {
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .nav-tabs .nav-item {
-            width: 100%;
-            margin: 2px 0;
-        }
-        
-        .nav-tabs .nav-link {
-            border-radius: 8px;
-            min-width: 200px;
-        }
-        
-        .search-box {
-            max-width: 100%;
-        }
-        
-        .card-header .row {
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .card-header .row .col-md-6 {
-            width: 100%;
-            text-align: center !important;
-        }
-    }
-</style>
+
   
 </head>
 
@@ -247,7 +129,6 @@ function getLoanCount($loans) {
                                                     <div class="card shadow">
                                                         <div class="card-header py-3">
                                                             <div class="row">
-                                                                
                                                                 <div class="col-md-6">
                                                                     <div class="text-md-end search-container">
                                                                         <input type="search" class="form-control form-control-sm search-box" 
@@ -268,6 +149,7 @@ function getLoanCount($loans) {
                                                                             <th>Collateral</th>
                                                                             <th>Duration</th>
                                                                             <th>Loan Amount</th>
+                                                                            <th>Loan Date</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -294,7 +176,6 @@ function getLoanCount($loans) {
                                                     <div class="card shadow">
                                                         <div class="card-header py-3">
                                                             <div class="row">
-                                                              
                                                                 <div class="col-md-6">
                                                                     <div class="text-md-end search-container">
                                                                         <input type="search" class="form-control form-control-sm search-box" 
@@ -315,6 +196,7 @@ function getLoanCount($loans) {
                                                                             <th>Collateral</th>
                                                                             <th>Duration</th>
                                                                             <th>Loan Amount</th>
+                                                                            <th>Loan Date</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -341,7 +223,6 @@ function getLoanCount($loans) {
                                                     <div class="card shadow">
                                                         <div class="card-header py-3">
                                                             <div class="row">
-                                                                
                                                                 <div class="col-md-6">
                                                                     <div class="text-md-end search-container">
                                                                         <input type="search" class="form-control form-control-sm search-box" 
@@ -362,6 +243,7 @@ function getLoanCount($loans) {
                                                                             <th>Collateral</th>
                                                                             <th>Duration</th>
                                                                             <th>Loan Amount</th>
+                                                                            <th>Loan Date</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -390,83 +272,8 @@ function getLoanCount($loans) {
         <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
     </div>
     
-    <script>
-        function viewLoanDetails(loanId) {
-            // Redirect to loan details page with the loan ID
-            window.location.href = 'loan_review.php?loan_id=' + loanId;
-        }
-        
-        // Search functionality for all tables
-        function initializeSearch(searchInputId, tableId) {
-            const searchInput = document.getElementById(searchInputId);
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    const searchTerm = this.value.toLowerCase();
-                    const table = document.getElementById(tableId);
-                    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-                    
-                    for (let i = 0; i < rows.length; i++) {
-                        const row = rows[i];
-                        const text = row.textContent.toLowerCase();
-                        if (text.includes(searchTerm)) {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    }
-                });
-            }
-        }
-        
-        // Optional: Add keyboard navigation support
-        document.addEventListener('DOMContentLoaded', function() {
-            const rows = document.querySelectorAll('tbody tr[onclick]');
-            rows.forEach(row => {
-                row.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        const onclickAttr = this.getAttribute('onclick');
-                        const match = onclickAttr.match(/viewLoanDetails\((\d+)\)/);
-                        if (match) {
-                            viewLoanDetails(match[1]);
-                        }
-                    }
-                });
-                
-                // Make rows focusable for accessibility
-                row.setAttribute('tabindex', '0');
-                row.classList.add('clickable-row');
-            });
-            
-            // Initialize search functionality for all tabs
-            initializeSearch('searchPending', 'pendingTable');
-            initializeSearch('searchApproved', 'approvedTable');
-            initializeSearch('searchRejected', 'rejectedTable');
-            
-            // Clear search when switching tabs
-            document.querySelectorAll('.nav-link').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    // Clear all search inputs
-                    document.getElementById('searchPending').value = '';
-                    document.getElementById('searchApproved').value = '';
-                    document.getElementById('searchRejected').value = '';
-                    
-                    // Show all rows again
-                    const tables = ['pendingTable', 'approvedTable', 'rejectedTable'];
-                    tables.forEach(tableId => {
-                        const table = document.getElementById(tableId);
-                        if (table) {
-                            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-                            for (let i = 0; i < rows.length; i++) {
-                                rows[i].style.display = '';
-                            }
-                        }
-                    });
-                });
-            });
-        });
-    </script>
-    
+  
+    <script src="assets/js/loan.js"></script>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
 </body>

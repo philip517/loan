@@ -4,6 +4,28 @@ $stmt = $pdo->prepare("SELECT first_name,last_name FROM user_table WHERE user_id
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC); 
 
+// Fetch unread messages from users
+$message_stmt = $pdo->prepare("
+    SELECT m.*, l.loan_number, u.first_name, u.last_name 
+    FROM message m 
+    LEFT JOIN loan l ON m.loan_id = l.loan_id 
+    LEFT JOIN user_table u ON l.user_id = u.user_id 
+    WHERE m.status = 'sent' AND m.type = 'user_to_admin' 
+    ORDER BY m.created_at DESC 
+    LIMIT 5
+");
+$message_stmt->execute();
+$unread_messages = $message_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Count total unread messages
+$count_stmt = $pdo->prepare("
+    SELECT COUNT(*) as unread_count 
+    FROM message 
+    WHERE status = 'sent' AND type = 'user_to_admin'
+");
+$count_stmt->execute();
+$unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
+
 ?>
 <nav class="navbar z-3 align-items-start p-0 sidebar sidebar-dark accordion bg-gradient-primary navbar-dark">
         <div class="container-fluid d-flex flex-column p-0">
@@ -14,12 +36,15 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
             <hr class="my-0 sidebar-divider">
             <ul class="navbar-nav text-light" id="accordionSidebar">
                 <li class="nav-item"><a class="nav-link" href="index.php"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-                <li class="nav-item"><a class="nav-link active" href="profile.php"><i class="fas fa-user"></i><span>Profile</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="loan.php"><i class="fas fa-user"></i><span>Loans</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="loan.php"><i class="fas fa-hand-holding-usd"></i><span>Loans</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="overdue.php"><i class="fas fa-envelope"></i><span>Approved Loans Summary</span></a></li>
+
+                <li class="nav-item"><a class="nav-link" href="loan_request.php"><i class="fas fa-envelope"></i><span>Loan Requests</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="table.php"><i class="fas fa-table"></i><span>Staff</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="user.php"><i class="fas fa-table"></i><span>Clients</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-table"></i><span>Messages</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="add_user.php"><i class="fas fa-user-circle"></i><span>Add User</span></a></li>
+                <li class="nav-item"><a class="nav-link active" href="profile.php"><i class="fas fa-user-circle"></i><span>Profile</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="add_user.php"><i class="fas fa-user-plus"></i><span>Add User</span></a></li>
             </ul>
         </div>
     </nav>
@@ -28,84 +53,46 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
         <nav class="navbar navbar-expand fixed-top bg-white shadow z-1 mb-4 topbar">
                 <div class="container-fluid"><button class="btn btn-link d-md-none me-3 rounded-circle" id="sidebarToggleTop-1" type="button"><i class="fas fa-bars"></i></button>
                     <ul class="navbar-nav flex-nowrap ms-auto">
-                        <li class="nav-item dropdown d-sm-none no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><i class="fas fa-search"></i></a>
-                            <div class="dropdown-menu p-3 dropdown-menu-end animated--grow-in" aria-labelledby="searchDropdown">
-                                <form class="w-100 me-auto navbar-search">
-                                    <div class="input-group"><input class="bg-light border-0 form-control small" type="text" placeholder="Search for ..."><button class="btn btn-primary" type="button"><i class="fas fa-search"></i></button></div>
-                                </form>
-                            </div>
-                        </li>
                         <li class="nav-item mx-1 dropdown no-arrow">
-                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="badge bg-danger badge-counter">3+</span><i class="fas fa-bell fa-fw"></i></a>
+                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#">
+                                <?php if ($unread_count > 0): ?>
+                                    <span class="badge bg-danger badge-counter"><?php echo $unread_count; ?></span>
+                                <?php endif; ?>
+                                <i class="fas fa-envelope fa-fw"></i></a>
                                 <div class="dropdown-menu dropdown-menu-end dropdown-list animated--grow-in">
-                                    <h6 class="dropdown-header">alerts center</h6><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3">
-                                            <div class="bg-primary icon-circle"><i class="fas fa-file-alt text-white"></i></div>
-                                        </div>
-                                        <div><span class="small text-gray-500">December 12, 2019</span>
-                                            <p>A new monthly report is ready to download!</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3">
-                                            <div class="bg-success icon-circle"><i class="fas fa-donate text-white"></i></div>
-                                        </div>
-                                        <div><span class="small text-gray-500">December 7, 2019</span>
-                                            <p>$290.29 has been deposited into your account!</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3">
-                                            <div class="bg-warning icon-circle"><i class="fas fa-exclamation-triangle text-white"></i></div>
-                                        </div>
-                                        <div><span class="small text-gray-500">December 2, 2019</span>
-                                            <p>Spending Alert: We've noticed unusually high spending for your account.</p>
-                                        </div>
-                                    </a><a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
+                                    <h6 class="dropdown-header">Messages Center</h6>
+                                    <?php if (empty($unread_messages)): ?>
+                                        <a class="dropdown-item text-center small text-gray-500" href="#">
+                                            <div class="py-3">
+                                                <i class="fas fa-envelope-open fa-2x text-muted mb-2"></i>
+                                                <p class="mb-0">No new messages</p>
+                                            </div>
+                                        </a>
+                                    <?php else: ?>
+                                        <?php foreach ($unread_messages as $message): 
+                                            $client_name = $message['first_name'] . ' ' . $message['last_name'];
+                                            $loan_info = $message['loan_id'] ? "Loan #" . $message['loan_number'] : "General Message";
+                                        ?>
+                                            <a class="dropdown-item d-flex align-items-center" href="loan_messages.php?loan_id=<?php echo $message['loan_id']; ?>">
+                                                <div class="me-3">
+                                                    <div class="bg-primary icon-circle"><i class="fas fa-envelope text-white"></i></div>
+                                                </div>
+                                                <div>
+                                                    <p class="mb-0 small"><strong><?php echo htmlspecialchars($message['topic']); ?></strong></p>
+                                                    <p class="mb-0 small text-truncate" style="max-width: 200px;">
+                                                        From: <?php echo htmlspecialchars($client_name); ?> | <?php echo $loan_info; ?>
+                                                    </p>
+                                                </div>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <a class="dropdown-item text-center small text-gray-500" href="message.php">Show All Messages</a>
                                 </div>
                             </div>
-                        </li>
-                        <li class="nav-item mx-1 dropdown no-arrow">
-                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="badge bg-danger badge-counter">7</span><i class="fas fa-envelope fa-fw"></i></a>
-                                <div class="dropdown-menu dropdown-menu-end dropdown-list animated--grow-in">
-                                    <h6 class="dropdown-header">alerts center</h6><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar4.jpeg">
-                                            <div class="bg-success status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>Hi there! I am wondering if you can help me with a problem I've been having.</span></div>
-                                            <p class="mb-0 small text-gray-500">Emily Fowler - 58m</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar2.jpeg">
-                                            <div class="status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>I have the photos that you ordered last month!</span></div>
-                                            <p class="mb-0 small text-gray-500">Jae Chun - 1d</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar3.jpeg">
-                                            <div class="bg-warning status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>Last month's report looks great, I am very happy with the progress so far, keep up the good work!</span></div>
-                                            <p class="mb-0 small text-gray-500">Morgan Alvarez - 2d</p>
-                                        </div>
-                                    </a><a class="dropdown-item d-flex align-items-center" href="#">
-                                        <div class="me-3 dropdown-list-image"><img class="rounded-circle" src="assets/img/avatars/avatar5.jpeg">
-                                            <div class="bg-success status-indicator"></div>
-                                        </div>
-                                        <div class="fw-bold">
-                                            <div class="text-truncate"><span>Am I a good boy? The reason I ask is because someone told me that people say this to all dogs, even if they aren't good...</span></div>
-                                            <p class="mb-0 small text-gray-500">Chicken the Dog · 2w</p>
-                                        </div>
-                                    </a><a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
-                                </div>
-                            </div>
-                            <div class="shadow dropdown-list dropdown-menu dropdown-menu-end" aria-labelledby="alertsDropdown"></div>
                         </li>
                         <li class="nav-item dropdown no-arrow">
-                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="d-none d-lg-inline me-2 text-gray-600 small"><?php echo $user['first_name']." ".$user['last_name'];?></span><img class="border rounded-circle img-profile" src="assets/img/avatars/avatar1.jpeg" width="32" height="32"></a>
-                                <div class="dropdown-menu shadow dropdown-menu-end animated--grow-in"><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Profile</a><a class="dropdown-item" href="message.php"><i class="fas fa-envelope me-2 fa-sm fa-fw text-gray-400" style="font-size: 12px;"></i>&nbsp;Messages</a><a class="dropdown-item" href="table.php"><i class="fas fa-list me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Clients</a>
+                            <div class="nav-item dropdown no-arrow"><a class="dropdown-toggle nav-link" aria-expanded="false" data-bs-toggle="dropdown" href="#"><span class="d-none d-lg-inline me-2 text-gray-600 small"><?php echo $user['first_name']." ".$user['last_name'];?></span></a>
+                                <div class="dropdown-menu shadow dropdown-menu-end animated--grow-in"><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Profile</a><a class="dropdown-item" href="message.php"><i class="fas fa-envelope me-2 fa-sm fa-fw text-gray-400" style="font-size: 12px;"></i>&nbsp;Messages</a><a class="dropdown-item" href="user.php"><i class="fas fa-list me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Clients</a>
                                     <div class="dropdown-divider"></div><a class="dropdown-item" href="../index.php"  ><i class="fas fa-sign-out-alt me-2 fa-sm fa-fw text-gray-400"></i>&nbsp;Logout</a>
                                 </div>
                             </div>
@@ -113,6 +100,39 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
                     </ul>
                 </div>
             </nav>
+
+<?php
+// // Function to display time elapsed in a human-readable format
+// function time_elapsed_string($datetime, $full = false) {
+//     $now = new DateTime;
+//     $ago = new DateTime($datetime);
+//     $diff = $now->diff($ago);
+
+//     $diff->w = floor($diff->d / 7);
+//     $diff->d -= $diff->w * 7;
+
+//     $string = array(
+//         'y' => 'year',
+//         'm' => 'month',
+//         'w' => 'week',
+//         'd' => 'day',
+//         'h' => 'hour',
+//         'i' => 'minute',
+//         's' => 'second',
+//     );
+    
+//     foreach ($string as $k => &$v) {
+//         if ($diff->$k) {
+//             $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
+//         } else {
+//             unset($string[$k]);
+//         }
+//     }
+
+//     if (!$full) $string = array_slice($string, 0, 1);
+//     return $string ? implode(', ', $string) . ' ago' : 'just now';
+// }
+?>
 
 <script>
     // Get the current page filename
@@ -132,4 +152,22 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
             link.classList.remove('active');
         }
     });
+
+    // Auto-refresh message count every 30 seconds
+    setInterval(function() {
+        fetch('get_message_count.php')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.querySelector('.nav-item .badge-counter');
+                if (badge) {
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count;
+                        badge.style.display = 'inline';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching message count:', error));
+    }, 30000);
 </script>

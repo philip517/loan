@@ -1,0 +1,47 @@
+ .clickable-image {
+            transition: transform 0.2s ease-in-out;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .clickable-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-color: #007bff;
+        }
+        .modal-image {
+            max-width: 100%;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+        }
+        .image-modal-content {
+            background: transparent;
+            border: none;
+        }
+        .card-header {
+            font-weight: 600;
+        }
+        .image-section {
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .image-section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+        .loan-number-display {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2c3e50;
+            background: rgba(52, 152, 219, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+        .table-sm th,
+        .table-sm td {
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }

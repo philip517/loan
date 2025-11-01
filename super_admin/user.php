@@ -26,6 +26,12 @@ $client_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
     <style>
+        .sticky-footer {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 60px;
+    }
         .clickable-row {
             cursor: pointer;
             transition: background-color 0.2s ease;

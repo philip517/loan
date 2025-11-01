@@ -7,7 +7,7 @@ $loan_id = $_GET['loan_id'] ?? null;
 
 if (!$loan_id) {
     $_SESSION['error_message'] = "No loan ID provided.";
-    header("Location: my_loans.php");
+    header("Location:loan.php");
     exit;
 }
 
@@ -57,7 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     }
 }
 
-// Function to display loan details
 function displayLoanDetails($loan) {
     $status_color = match($loan['status']) {
         'approved' => 'success',
@@ -70,6 +69,44 @@ function displayLoanDetails($loan) {
         'rejected' => 'rgba(231,76,60,0.14)',
         default => 'rgba(246,194,62,0.13)'
     };
+    
+    // Check if loan is overdue
+    $overdue_warning = '';
+    if (!empty($loan['loan_end_date']) && $loan['status'] === 'approved') {
+        $end_date = new DateTime($loan['loan_end_date']);
+        $today = new DateTime();
+        
+        if ($today > $end_date) {
+            $interval = $today->diff($end_date);
+            $days_overdue = $interval->days;
+            $overdue_warning = '
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="alert alert-danger d-flex align-items-center shadow-sm">
+                        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading mb-1">LOAN OVERDUE!</h5>
+                            <p class="mb-0">Your loan repayment is overdue by <strong>' . $days_overdue . ' day(s)</strong>. The repayment was due on ' . $loan['loan_end_date'] . '. Please contact the administrator immediately to arrange payment.</p>
+                        </div>
+                        <span class="badge bg-danger fs-6">
+                            <i class="fas fa-clock me-1"></i>' . $days_overdue . ' Day(s) Late
+                        </span>
+                    </div>
+                </div>
+            </div>';
+        }
+    }
+    
+    // Check if loan is pending to show edit button
+    $edit_button = '';
+    if ($loan['status'] === 'pending') {
+        $edit_button = '
+            <div class="col-auto">
+                <a href="loan_edit.php?loan_id=' . $loan['loan_id'] . '" class="btn btn-warning">
+                    <i class="fas fa-edit me-2"></i>Edit Application
+                </a>
+            </div>';
+    }
     
     // Convert BLOB images to base64 for display
     $user_id_image_src = $loan['user_id_image'] ? 'data:image/jpeg;base64,' . base64_encode($loan['user_id_image']) : 'assets/img/dogs/image3.jpeg';
@@ -99,10 +136,13 @@ function displayLoanDetails($loan) {
                 <div class="col-auto">
                     <span class="badge bg-' . $status_color . ' fs-6">' . strtoupper($loan['status'] ?? 'PENDING') . '</span>
                 </div>
+                ' . $edit_button . '
             </div>
         </div>
         
         <div class="card-body" style="background: ' . $status_bg . ';">
+            ' . $overdue_warning . '
+            
             <div class="row">
                 <!-- Client Information -->
                 <div class="col-md-6 mb-4">
@@ -210,6 +250,7 @@ function displayLoanDetails($loan) {
                                         <option value="Additional Information">Additional Information</option>
                                         <option value="Collateral Questions">Collateral Questions</option>
                                         <option value="Payment Schedule">Payment Schedule</option>
+                                        <option value="Overdue Payment">Overdue Payment</option>
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>

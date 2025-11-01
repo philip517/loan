@@ -10,14 +10,14 @@ if (!$user_id) {
     exit;
 }
 
-// Fetch budget data
+// Fetch budget data (if you have a budget table)
 $budget_query = "SELECT amount, balance FROM budget ORDER BY start_date DESC LIMIT 1";
 $budget_stmt = $pdo->query($budget_query);
 $budget = $budget_stmt->fetch(PDO::FETCH_ASSOC);
 
-$original_budget_amount = $budget ? $budget['amount'] : 0;    // Original total budget
+$original_budget_amount = $budget ? $budget['amount'] : 0;
 
-// Fetch loan statistics - calculate total approved loan amount
+// Fetch loan statistics using correct table structure
 $loan_stats_query = "
     SELECT 
         COUNT(*) as total_loans,
@@ -32,16 +32,13 @@ $loan_stats_query = "
 $loan_stats_stmt = $pdo->query($loan_stats_query);
 $loan_stats = $loan_stats_stmt->fetch(PDO::FETCH_ASSOC);
 
-// CALCULATE CURRENT BALANCE: Budget Amount - Total Approved Loans
+// Calculate current balance
 $current_budget_balance = $original_budget_amount - ($loan_stats['total_approved_loan_amount'] ?? 0);
-
-// Ensure balance doesn't go negative
 if ($current_budget_balance < 0) {
     $current_budget_balance = 0;
 }
 
-// CORRECT TOTAL EARNINGS CALCULATION:
-$total_earnings = $loan_stats['total_interest_earnings'];
+$total_earnings = $loan_stats['total_interest_earnings'] ?? 0;
 
 // Calculate loan usage percentage
 $loan_usage = 0;
@@ -49,20 +46,52 @@ if ($original_budget_amount > 0) {
     $loan_usage = (($loan_stats['total_approved_loan_amount'] ?? 0) / $original_budget_amount) * 100;
 }
 
-$budget_usage = (($loan_stats['total_approved_loan_amount'] ?? 0) / $original_budget_amount) * 100;
-// Calculate available for loans
-$available_for_loans = $original_budget_amount - ($loan_stats['total_approved_loan_amount'] ?? 0);
-// Fetch user statistics
-$user_stats_query = "
-    SELECT 
-        COUNT(*) as total_users,
-        COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_users,
-        COUNT(CASE WHEN role = 'super_admin' THEN 1 END) as super_admin_users,
-        COUNT(CASE WHEN role = 'client' OR role IS NULL THEN 1 END) as client_users
-    FROM user_table
+// Fetch overdue loans
+$overdue_loans_query = "
+    SELECT COUNT(*) as overdue_count 
+    FROM loan 
+    WHERE status = 'approved' 
+    AND loan_end_date < CURDATE()
 ";
-$user_stats_stmt = $pdo->query($user_stats_query);
-$user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
+$overdue_loans_stmt = $pdo->query($overdue_loans_query);
+$overdue_loans = $overdue_loans_stmt->fetch(PDO::FETCH_ASSOC);
+
+// Since there's no loan_reviews table, let's get admin's reviewed loans from loan table
+// We'll assume admin_id is stored in loan table or we'll need to modify the approach
+$admin_reviews_query = "
+    SELECT 
+        COUNT(*) as admin_review_count,
+        COUNT(CASE WHEN status = 'approved' THEN 1 END) as admin_approved,
+        COUNT(CASE WHEN status = 'rejected' THEN 1 END) as admin_rejected,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as admin_pending
+    FROM loan 
+    WHERE admin_notes IS NOT NULL
+    -- If you have an admin_id field in loan table, use: WHERE admin_id = ?
+";
+$admin_reviews_stmt = $pdo->prepare($admin_reviews_query);
+$admin_reviews_stmt->execute();
+$admin_reviews = $admin_reviews_stmt->fetch(PDO::FETCH_ASSOC);
+
+// Fetch recent overdue loans for display
+$recent_overdue_query = "
+    SELECT l.loan_id, l.loan_number, l.amount, l.loan_end_date,
+           DATEDIFF(CURDATE(), l.loan_end_date) as days_overdue,
+           u.first_name, u.last_name
+    FROM loan l 
+    JOIN admin u ON l.user_id = u.user_id 
+    WHERE l.status = 'approved' 
+    AND l.loan_end_date < CURDATE()
+    ORDER BY l.loan_end_date ASC 
+    LIMIT 5
+";
+$recent_overdue_stmt = $pdo->query($recent_overdue_query);
+$recent_overdue_loans = $recent_overdue_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get admin info for display
+$admin_info_query = "SELECT first_name, last_name FROM admin WHERE user_id = ?";
+$admin_info_stmt = $pdo->prepare($admin_info_query);
+$admin_info_stmt->execute([$user_id]);
+$admin_info = $admin_info_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -86,102 +115,287 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
             <div class="container-fluid" style="opacity: 0.97;margin-top: 100px;">
                 <div class="d-sm-flex justify-content-between align-items-center mb-4">
                     <h3 class="text-dark mb-0"><strong>ADMIN DASHBOARD</strong></h3>
+                    <span class="text-muted">Welcome, <?php echo $admin_info['first_name'] . ' ' . $admin_info['last_name']; ?></span>
                 </div>
                 
-               <!-- Financial Overview Cards -->
-<div class="row">
-    <!-- Current Budget Card -->
-    <div class="col-md-6 col-xl-3 mb-4">
-        <div class="card shadow py-2 border-left-primary">
-            <div class="card-body">
-                <div class="row g-0 align-items-center">
-                    <div class="col me-2">
-                        <div class="text-uppercase text-primary mb-1 fw-bold text-xs">
-                            <span>Current Budget</span>
-                        </div>
-                        <div class="text-dark mb-0 fw-bold h5">
-                            <span>$<?php echo number_format($current_budget_balance, 2); ?></span>
-                        </div>
-                        <div class="text-xs text-muted">
-                            <span>Original: $<?php echo number_format($original_budget_amount, 2); ?></span>
-                        </div>
-                    </div>
-                    <div class="col-auto"><i class="fas fa-wallet fa-2x text-gray-300"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Total Earnings Card -->
-    <div class="col-md-6 col-xl-3 mb-4">
-        <div class="card shadow py-2 border-left-success">
-            <div class="card-body">
-                <div class="row g-0 align-items-center">
-                    <div class="col me-2">
-                        <div class="text-uppercase text-success mb-1 fw-bold text-xs">
-                            <span>Total Earnings</span>
-                        </div>
-                        <div class="text-dark mb-0 fw-bold h5">
-                            <span>$<?php echo number_format($total_earnings, 2); ?></span>
-                        </div>
-                        <div class="text-xs text-muted">
-                            <span>Budget + Interest</span>
+                <!-- Loan Status Overview Cards -->
+                <div class="row">
+                    <!-- Approved Loans Card -->
+                    <div class="col-md-6 col-xl-3 mb-4">
+                        <div class="card shadow py-2 border-left-success">
+                            <div class="card-body">
+                                <div class="row g-0 align-items-center">
+                                    <div class="col me-2">
+                                        <div class="text-uppercase text-success mb-1 fw-bold text-xs">
+                                            <span>Approved Loans</span>
+                                        </div>
+                                        <div class="text-dark mb-0 fw-bold h5">
+                                            <span><?php echo $loan_stats['approved_loans'] ?? 0; ?></span>
+                                        </div>
+                                        <div class="text-xs text-muted">
+                                            <span>Total: $<?php echo number_format($loan_stats['total_approved_loan_amount'] ?? 0, 2); ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto"><i class="fas fa-check-circle fa-2x text-success"></i></div>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="loan.php?status=approved" class="btn btn-sm btn-outline-success w-100">
+                                        View Approved Loans
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-auto"><i class="fas fa-dollar-sign fa-2x text-gray-300"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Loan Usage Card -->
-    <div class="col-md-6 col-xl-3 mb-4">
-        <div class="card shadow py-2 border-left-info">
-            <div class="card-body">
-                <div class="row g-0 align-items-center">
-                    <div class="col me-2">
-                        <div class="text-uppercase text-info mb-1 fw-bold text-xs">
-                            <span>Loan Usage</span>
-                        </div>
-                        <div class="text-dark mb-0 fw-bold h5">
-                            <span><?php echo number_format($loan_usage, 1); ?>%</span>
-                        </div>
-                        <div class="text-xs text-muted">
-                            <span>$<?php echo number_format($loan_stats['total_approved_loan_amount'] ?? 0, 2); ?> used</span>
-                        </div>
-                        <div class="text-xs text-muted">
-                            <span>$<?php echo number_format($available_for_loans, 2); ?> available</span>
-                        </div>
-                    </div>
-                    <div class="col-auto"><i class="fas fa-chart-line fa-2x text-gray-300"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Total Loans Card -->
-    <div class="col-md-6 col-xl-3 mb-4">
-        <div class="card shadow py-2 border-left-warning">
-            <div class="card-body">
-                <div class="row g-0 align-items-center">
-                    <div class="col me-2">
-                        <div class="text-uppercase text-warning mb-1 fw-bold text-xs">
-                            <span>Total Loans</span>
-                        </div>
-                        <div class="text-dark mb-0 fw-bold h5">
-                            <span><?php echo $loan_stats['total_loans'] ?? 0; ?></span>
-                        </div>
-                        <div class="text-xs text-muted">
-                            <span>All Time</span>
+                    
+                    <!-- Pending Loans Card -->
+                    <div class="col-md-6 col-xl-3 mb-4">
+                        <div class="card shadow py-2 border-left-warning">
+                            <div class="card-body">
+                                <div class="row g-0 align-items-center">
+                                    <div class="col me-2">
+                                        <div class="text-uppercase text-warning mb-1 fw-bold text-xs">
+                                            <span>Pending Loans</span>
+                                        </div>
+                                        <div class="text-dark mb-0 fw-bold h5">
+                                            <span><?php echo $loan_stats['pending_loans'] ?? 0; ?></span>
+                                        </div>
+                                        <div class="text-xs text-muted">
+                                            <span>Awaiting review</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto"><i class="fas fa-clock fa-2x text-warning"></i></div>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="loan.php?status=pending" class="btn btn-sm btn-outline-warning w-100">
+                                        Review Pending Loans
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-auto"><i class="fas fa-hand-holding-usd fa-2x text-gray-300"></i></div>
+                    
+                    <!-- Rejected Loans Card -->
+                    <div class="col-md-6 col-xl-3 mb-4">
+                        <div class="card shadow py-2 border-left-danger">
+                            <div class="card-body">
+                                <div class="row g-0 align-items-center">
+                                    <div class="col me-2">
+                                        <div class="text-uppercase text-danger mb-1 fw-bold text-xs">
+                                            <span>Rejected Loans</span>
+                                        </div>
+                                        <div class="text-dark mb-0 fw-bold h5">
+                                            <span><?php echo $loan_stats['rejected_loans'] ?? 0; ?></span>
+                                        </div>
+                                        <div class="text-xs text-muted">
+                                            <span>Not approved</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto"><i class="fas fa-times-circle fa-2x text-danger"></i></div>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="loan.php?status=rejected" class="btn btn-sm btn-outline-danger w-100">
+                                        View Rejected Loans
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Overdue Loans Card -->
+                    <div class="col-md-6 col-xl-3 mb-4">
+                        <div class="card shadow py-2 border-left-danger">
+                            <div class="card-body">
+                                <div class="row g-0 align-items-center">
+                                    <div class="col me-2">
+                                        <div class="text-uppercase text-danger mb-1 fw-bold text-xs">
+                                            <span>Overdue Loans</span>
+                                        </div>
+                                        <div class="text-dark mb-0 fw-bold h5">
+                                            <span><?php echo $overdue_loans['overdue_count'] ?? 0; ?></span>
+                                        </div>
+                                        <div class="text-xs text-muted">
+                                            <span>Past due date</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i></div>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="loan.php?status=approved&overdue=true" class="btn btn-sm btn-danger w-100">
+                                        <i class="fas fa-eye me-1"></i>View Overdue
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-          
+
+                <!-- My Activity & Quick Actions Section -->
+                <div class="row">
+                    <!-- My Activity Card -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow h-100">
+                            <div class="card-header py-3">
+                                <h6 class="text-primary m-0 fw-bold">My Activity Summary</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="border-end">
+                                            <div class="text-success fw-bold h4"><?php echo $admin_reviews['admin_approved'] ?? 0; ?></div>
+                                            <div class="text-muted small">Approved</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border-end">
+                                            <div class="text-danger fw-bold h4"><?php echo $admin_reviews['admin_rejected'] ?? 0; ?></div>
+                                            <div class="text-muted small">Rejected</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-warning fw-bold h4"><?php echo $admin_reviews['admin_pending'] ?? 0; ?></div>
+                                        <div class="text-muted small">Pending</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Budget Summary -->
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <h6 class="text-muted mb-2">Budget Overview</h6>
+                                        <div class="progress mb-2" style="height: 10px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: <?php echo min($loan_usage, 100); ?>%;"
+                                                 title="Loan Usage: <?php echo number_format($loan_usage, 1); ?>%">
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between small">
+                                            <span>Available: $<?php echo number_format($current_budget_balance, 2); ?></span>
+                                            <span>Used: <?php echo number_format($loan_usage, 1); ?>%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <a href="loan.php" class="btn btn-outline-primary w-100">
+                                        <i class="fas fa-tasks me-1"></i>View All Loans
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Card -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow h-100">
+                            <div class="card-header py-3">
+                                <h6 class="text-primary m-0 fw-bold">Quick Actions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <a href="loan.php" class="btn btn-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                            <i class="fas fa-hand-holding-usd fa-2x mb-2"></i>
+                                            <span>Manage Loans</span>
+                                        </a>
+                                    </div>
+                                    <div class="col-6">
+                                        <a href="message.php" class="btn btn-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                            <i class="fas fa-envelope fa-2x mb-2"></i>
+                                            <span>Messaging</span>
+                                        </a>
+                                    </div>
+                                    <div class="col-6">
+                                        <a href="profile.php" class="btn btn-success w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                            <i class="fas fa-user fa-2x mb-2"></i>
+                                            <span>My Profile</span>
+                                        </a>
+                                    </div>
+                                    <div class="col-6">
+                                        <a href="users.php" class="btn btn-warning w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                            <i class="fas fa-users fa-2x mb-2"></i>
+                                            <span>Users</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overdue Loans List -->
+                <?php if (!empty($recent_overdue_loans)): ?>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 bg-danger text-white">
+                                <h6 class="m-0 fw-bold">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Recent Overdue Loans
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Loan Number</th>
+                                                <th>Client Name</th>
+                                                <th>Amount</th>
+                                                <th>Due Date</th>
+                                                <th>Days Overdue</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($recent_overdue_loans as $overdue_loan): ?>
+                                            <tr>
+                                                <td><?php echo $overdue_loan['loan_number'] ?? 'N/A'; ?></td>
+                                                <td><?php echo $overdue_loan['first_name'] . ' ' . $overdue_loan['last_name']; ?></td>
+                                                <td>$<?php echo number_format($overdue_loan['amount'], 2); ?></td>
+                                                <td><?php echo $overdue_loan['loan_end_date']; ?></td>
+                                                <td>
+                                                    <span class="badge bg-danger">
+                                                        <?php echo $overdue_loan['days_overdue']; ?> days
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <a href="loan_details.php?loan_id=<?php echo $overdue_loan['loan_id']; ?>" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        View Loan
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="loan.php?status=approved&overdue=true" class="btn btn-danger">
+                                        <i class="fas fa-list me-1"></i>View All Overdue Loans
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 bg-success text-white">
+                                <h6 class="m-0 fw-bold">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    No Overdue Loans
+                                </h6>
+                            </div>
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5 class="text-success">Great News!</h5>
+                                <p class="text-muted">All approved loans are currently up to date with their payments.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Charts Section -->
                 <div class="row">
@@ -210,111 +424,6 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
                                     <span class="me-2"><i class="fas fa-circle text-warning"></i>&nbsp;Pending</span>
                                     <span class="me-2"><i class="fas fa-circle text-success"></i>&nbsp;Approved</span>
                                     <span class="me-2"><i class="fas fa-circle text-danger"></i>&nbsp;Rejected</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Progress Bars Section -->
-                <div class="row">
-                    <div class="col-lg-6 mb-4">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="text-primary m-0 fw-bold">System Statistics</h6>
-                            </div>
-                            <div class="card-body">
-                                <h4 class="small fw-bold">Budget Utilization<span class="float-end"><?php echo number_format($budget_usage, 1); ?>%</span></h4>
-                                <div class="progress mb-4">
-                                    <div class="progress-bar bg-<?php echo $budget_usage > 80 ? 'danger' : ($budget_usage > 60 ? 'warning' : 'success'); ?>" 
-                                         aria-valuenow="<?php echo $budget_usage; ?>" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100" 
-                                         style="width: <?php echo $budget_usage; ?>%;">
-                                        <span class="visually-hidden"><?php echo number_format($budget_usage, 1); ?>%</span>
-                                    </div>
-                                </div>
-                                
-                                <h4 class="small fw-bold">Loan Approval Rate<span class="float-end">
-                                    <?php 
-                                    $approval_rate = 0;
-                                    if ($loan_stats['total_loans'] > 0) {
-                                        $approval_rate = ($loan_stats['approved_loans'] / $loan_stats['total_loans']) * 100;
-                                    }
-                                    echo number_format($approval_rate, 1); ?>%
-                                </span></h4>
-                                <div class="progress mb-4">
-                                    <div class="progress-bar bg-success" 
-                                         aria-valuenow="<?php echo $approval_rate; ?>" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100" 
-                                         style="width: <?php echo $approval_rate; ?>%;">
-                                        <span class="visually-hidden"><?php echo number_format($approval_rate, 1); ?>%</span>
-                                    </div>
-                                </div>
-                                
-                                <h4 class="small fw-bold">System Performance<span class="float-end">85%</span></h4>
-                                <div class="progress mb-4">
-                                    <div class="progress-bar bg-info" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100" style="width: 85%;">
-                                        <span class="visually-hidden">85%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Todo List (Keep existing) -->
-                    <div class="col">
-                        <div class="row">
-                            <div class="col col-lg-11">
-                                <div class="card shadow mb-4">
-                                    <div class="card-header py-3">
-                                        <h6 class="text-primary m-0 fw-bold">Todo List</h6>
-                                    </div>
-                                    <ul class="list-group list-group-flush">
-                                        <li class="list-group-item">
-                                            <div class="row g-0 align-items-center">
-                                                <div class="col me-2">
-                                                    <h6 class="mb-0"><strong>Review Pending Loans</strong></h6>
-                                                    <span class="text-xs"><?php echo $loan_stats['pending_loans'] ?? 0; ?> applications waiting</span>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="formCheck-1">
-                                                        <label class="form-check-label" for="formCheck-1"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li class="list-group-item">
-                                            <div class="row g-0 align-items-center">
-                                                <div class="col me-2">
-                                                    <h6 class="mb-0"><strong>Update Budget</strong></h6>
-                                                    <span class="text-xs">Current: $<?php echo number_format($current_budget_balance, 2); ?></span>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="formCheck-2">
-                                                        <label class="form-check-label" for="formCheck-2"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li class="list-group-item">
-                                            <div class="row g-0 align-items-center">
-                                                <div class="col me-2">
-                                                    <h6 class="mb-0"><strong>Generate Monthly Report</strong></h6>
-                                                    <span class="text-xs">Due today</span>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="formCheck-3">
-                                                        <label class="form-check-label" for="formCheck-3"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    </ul>
                                 </div>
                             </div>
                         </div>

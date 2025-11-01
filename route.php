@@ -32,7 +32,7 @@
                     exit();
                 } 
                  elseif ($user['role'] === 'super_admin') {
-                    header("Location: s_admin/index.php");
+                    header("Location: super_admin/index.php");
                     exit();
                 }
                 else {
