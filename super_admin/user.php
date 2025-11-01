@@ -2,15 +2,25 @@
 require 'auth_admin.php';
 require '../db_connect.php'; // include your PDO connection
 
-// Fetch all admin and super_admin users from database
-$user_sql = "SELECT user_id, first_name, last_name, username, phone, NRC, email, 
-                    occupation, address, date_of_birth, nationality, role
-             FROM user_table 
-             WHERE role IN ('client')
-             ORDER BY first_name, last_name";
-$user_stmt = $pdo->prepare($user_sql);
-$user_stmt->execute();
-$client_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
+// Fetch active client users
+$active_sql = "SELECT user_id, first_name, last_name, username, phone, NRC, email, 
+                      occupation, address, date_of_birth, nationality, role, status
+               FROM user_table 
+               WHERE role IN ('client') AND status = 'active'
+               ORDER BY first_name, last_name";
+$active_stmt = $pdo->prepare($active_sql);
+$active_stmt->execute();
+$active_clients = $active_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch deactivated client users
+$deactivated_sql = "SELECT user_id, first_name, last_name, username, phone, NRC, email, 
+                           occupation, address, date_of_birth, nationality, role, status
+                    FROM user_table 
+                    WHERE role IN ('client') AND status != 'active'
+                    ORDER BY first_name, last_name";
+$deactivated_stmt = $pdo->prepare($deactivated_sql);
+$deactivated_stmt->execute();
+$deactivated_clients = $deactivated_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -19,19 +29,19 @@ $client_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Admins</title>
-    <meta name="description" content="Table for administrators">
+    <title>Clients</title>
+    <meta name="description" content="Table for clients">
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
     <style>
         .sticky-footer {
-        position: absolute;
-        bottom: 0;
-        width: 100%;
-        height: 60px;
-    }
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 60px;
+        }
         .clickable-row {
             cursor: pointer;
             transition: background-color 0.2s ease;
@@ -43,11 +53,25 @@ $client_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
             font-size: 0.75em;
             padding: 0.25em 0.6em;
         }
-        .table-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            object-fit: cover;
+        .status-badge {
+            font-size: 0.7em;
+            padding: 0.3em 0.6em;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
+        }
+        .tab-pane {
+            padding-top: 1rem;
+        }
+        .empty-state {
+            padding: 3rem 1rem;
+            text-align: center;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -57,81 +81,144 @@ $client_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php require 'navbar.php'; ?>
         <div class="d-flex flex-column" id="content-wrapper">
             <div id="content">
-              
                 <div class="container-fluid" style="margin-top: 100px;">
                     <h3 class="text-dark mb-4">Clients</h3>
-                    <div class="card shadow">
-                        <div class="card-header py-3">
-                            <p class="text-primary m-0 fw-bold">Client Info</p>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 col-lg-12">
-                                    <div class="text-md-end dataTables_filter" id="dataTable_filter">
-                                        <input type="search" class="form-control form-control-sm" aria-controls="dataTable" placeholder="Search Clients..." style="text-align: center;" id="searchInput">
-                                        <label class="form-label"></label>
+                    
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs" id="clientTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab" aria-controls="active" aria-selected="true">
+                                Active Clients 
+                                <span class="badge bg-success ms-1"><?php echo count($active_clients); ?></span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="deactivated-tab" data-bs-toggle="tab" data-bs-target="#deactivated" type="button" role="tab" aria-controls="deactivated" aria-selected="false">
+                                Deactivated Clients 
+                                <span class="badge bg-danger ms-1"><?php echo count($deactivated_clients); ?></span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="clientTabsContent">
+                        
+                        <!-- Active Clients Tab -->
+                        <div class="tab-pane fade show active" id="active" role="tabpanel" aria-labelledby="active-tab">
+                            <div class="card shadow mt-3">
+                                <div class="card-header py-3">
+                                    <p class="text-primary m-0 fw-bold">Active Clients</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-12">
+                                            <div class="text-md-end dataTables_filter">
+                                                <input type="search" class="form-control form-control-sm active-search" aria-controls="activeTable" placeholder="Search Active Clients..." style="text-align: center;">
+                                                <label class="form-label"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table my-0" id="activeTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Username</th>
+                                                    <th>Email</th>
+                                                    <th>Phone</th>
+                                                    <th>Occupation</th>
+                                                    <th>Status</th>
+                                                    <th>NRC</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php if (empty($active_clients)): ?>
+                                                    <tr>
+                                                        <td colspan="7" class="empty-state">
+                                                            <i class="fas fa-users"></i>
+                                                            <p class="text-muted mb-0">No active clients found</p>
+                                                        </td>
+                                                    </tr>
+                                                <?php else: ?>
+                                                    <?php foreach ($active_clients as $user): ?>
+                                                        <tr class="clickable-row" data-user-id="<?php echo $user['user_id']; ?>">
+                                                            <td>
+                                                                <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
+                                                            </td>
+                                                            <td><?php echo htmlspecialchars($user['username']); ?></td>
+                                                            <td><?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?></td>
+                                                            <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
+                                                            <td><?php echo htmlspecialchars($user['occupation'] ?? 'N/A'); ?></td>
+                                                            <td>
+                                                                <span class="badge bg-success status-badge">Active</span>
+                                                            </td>
+                                                            <td><?php echo htmlspecialchars($user['NRC'] ?? 'N/A'); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
-                            <div class="table-responsive mt-2 table" id="dataTable" role="grid" aria-describedby="dataTable_info">
-                                <table class="table my-0" id="dataTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Username</th>
-                                            <th>Email</th>
-                                            <th>Phone</th>
-                                            <th>Occupation</th>
-                                            <th>Role</th>
-                                            <th>NRC</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($client_users)): ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center py-4">
-                                                    <i class="fas fa-users fa-2x text-muted mb-2"></i>
-                                                    <p class="text-muted">No Clients found</p>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($client_users as $user): ?>
-                                                <tr class="clickable-row" data-user-id="<?php echo $user['user_id']; ?>">
-                                                    <td>
-                                                        <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
-                                                    </td>
-                                                    <td><?php echo htmlspecialchars($user['username']); ?></td>
-                                                    <td><?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?></td>
-                                                    <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
-                                                    <td><?php echo htmlspecialchars($user['occupation'] ?? 'N/A'); ?></td>
-                                                    <td>
-                                                            <span class="badge bg-primary role-badge">client</span>
-                                                    
-                                                    </td>
-                                                    <td><?php echo htmlspecialchars($user['NRC'] ?? 'N/A'); ?></td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                  
-                                </table>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 align-self-center">
-                                    <p id="dataTable_info" class="dataTables_info" role="status" aria-live="polite">
-                                        Showing <?php echo count($client_users); ?> Clients(s)
-                                    </p>
+                        </div>
+
+                        <!-- Deactivated Clients Tab -->
+                        <div class="tab-pane fade" id="deactivated" role="tabpanel" aria-labelledby="deactivated-tab">
+                            <div class="card shadow mt-3">
+                                <div class="card-header py-3">
+                                    <p class="text-primary m-0 fw-bold">Deactivated Clients</p>
                                 </div>
-                                <div class="col-md-6">
-                                    <nav class="d-lg-flex justify-content-lg-end dataTables_paginate paging_simple_numbers">
-                                        <ul class="pagination">
-                                            <li class="page-item disabled"><a class="page-link" aria-label="Previous" href="#"><span aria-hidden="true">«</span></a></li>
-                                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                            <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                            <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                            <li class="page-item"><a class="page-link" aria-label="Next" href="#"><span aria-hidden="true">»</span></a></li>
-                                        </ul>
-                                    </nav>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-12">
+                                            <div class="text-md-end dataTables_filter">
+                                                <input type="search" class="form-control form-control-sm deactivated-search" aria-controls="deactivatedTable" placeholder="Search Deactivated Clients..." style="text-align: center;">
+                                                <label class="form-label"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table my-0" id="deactivatedTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Username</th>
+                                                    <th>Email</th>
+                                                    <th>Phone</th>
+                                                    <th>Occupation</th>
+                                                    <th>Status</th>
+                                                    <th>NRC</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php if (empty($deactivated_clients)): ?>
+                                                    <tr>
+                                                        <td colspan="7" class="empty-state">
+                                                            <i class="fas fa-user-slash"></i>
+                                                            <p class="text-muted mb-0">No deactivated clients found</p>
+                                                        </td>
+                                                    </tr>
+                                                <?php else: ?>
+                                                    <?php foreach ($deactivated_clients as $user): ?>
+                                                        <tr class="clickable-row" data-user-id="<?php echo $user['user_id']; ?>">
+                                                            <td>
+                                                                <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
+                                                            </td>
+                                                            <td><?php echo htmlspecialchars($user['username']); ?></td>
+                                                            <td><?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?></td>
+                                                            <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
+                                                            <td><?php echo htmlspecialchars($user['occupation'] ?? 'N/A'); ?></td>
+                                                            <td>
+                                                                <span class="badge bg-danger status-badge">Deactivated</span>
+                                                            </td>
+                                                            <td><?php echo htmlspecialchars($user['NRC'] ?? 'N/A'); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -179,12 +266,30 @@ $client_users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
                 });
             });
 
-            // Add search functionality
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
+            // Search functionality for active clients
+            const activeSearch = document.querySelector('.active-search');
+            if (activeSearch) {
+                activeSearch.addEventListener('input', function() {
                     const searchTerm = this.value.toLowerCase();
-                    const rows = document.querySelectorAll('.clickable-row');
+                    const rows = document.querySelectorAll('#activeTable .clickable-row');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // Search functionality for deactivated clients
+            const deactivatedSearch = document.querySelector('.deactivated-search');
+            if (deactivatedSearch) {
+                deactivatedSearch.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('#deactivatedTable .clickable-row');
                     
                     rows.forEach(row => {
                         const text = row.textContent.toLowerCase();

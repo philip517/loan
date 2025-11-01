@@ -41,7 +41,12 @@ try {
 // Function to display loan data in table rows
 function displayLoans($loans, $tableId) {
     if (empty($loans)) {
-        echo '<tr><td colspan="7" class="text-center">No loans found</td></tr>';
+        echo '<tr>
+                <td colspan="7" class="empty-state">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <p class="text-muted mb-0">No loans found</p>
+                </td>
+              </tr>';
         return;
     }
     
@@ -59,7 +64,7 @@ function displayLoans($loans, $tableId) {
         $formatted_date = $loan_date !== 'N/A' ? date('M j, Y', strtotime($loan_date)) : 'N/A';
         
         echo "
-        <tr style='cursor: pointer;' onclick='viewLoanDetails($loan_id)'>
+        <tr class='clickable-row' data-loan-id='$loan_id'>
             <td><strong>$loan_number</strong></td>
             <td>$full_name</td>
             <td>$occupation</td>
@@ -69,11 +74,6 @@ function displayLoans($loans, $tableId) {
             <td>$formatted_date</td>
         </tr>";
     }
-}
-
-// Count functions for pagination info
-function getLoanCount($loans) {
-    return count($loans);
 }
 ?>
 
@@ -88,313 +88,206 @@ function getLoanCount($loans) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
- <style>
-    body {
-        position: relative;
-        min-height: 100vh;
-        padding-bottom: 60px; /* Height of footer */
-    }
-
-    .sticky-footer {
-        position: absolute;
-        bottom: 0;
-        width: 100%;
-        height: 60px;
-        z-index: 100;
-    }
-    
-    .clickable-row:hover {
-        background-color: #f8f9fa !important;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-    
-    .loan-number {
-        font-weight: 600;
-        color: #2c3e50;
-        font-family: 'Courier New', monospace;
-    }
-    
-    /* Centered Tab Styling */
-    .nav-tabs {
-        border-bottom: 2px solid #dee2e6;
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .nav-tabs .nav-item {
-        margin: 0 5px;
-    }
-    
-    .nav-tabs .nav-link {
-        color: #495057;
-        font-weight: 600;
-        border: 1px solid transparent;
-        border-radius: 8px 8px 0 0;
-        padding: 12px 20px;
-        transition: all 0.3s ease;
-        text-align: center;
-        min-width: 150px;
-    }
-    
-    .nav-tabs .nav-link.active {
-        color: #ffffff;
-        background-color: #007bff;
-        border-color: #007bff;
-    }
-    
-    .nav-tabs .nav-link:not(.active) {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
-    }
-    
-    .nav-tabs .nav-link:not(.active):hover {
-        background-color: #e9ecef;
-        border-color: #adb5bd;
-    }
-    
-    /* Centered Search box styling */
-    .search-container {
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: center;
-        width: 100%;
-    }
-    
-    .search-box {
-        max-width: 400px;
-        width: 100%;
-        text-align: center;
-    }
-    
-    .card-header .row {
-        align-items: center;
-    }
-    
-    /* For the pending tab where you removed the title */
-    .card-header .row .col-md-6:only-child {
-        width: 100%;
-        text-align: center;
-    }
-    
-    /* Responsive design for smaller screens */
-    @media (max-width: 768px) {
-        .nav-tabs {
-            flex-direction: column;
-            align-items: center;
+    <link rel="stylesheet" href="assets/css/loan.css">
+    <style>
+        .clickable-row {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
         }
-        
-        .nav-tabs .nav-item {
-            width: 100%;
-            margin: 2px 0;
+        .clickable-row:hover {
+            background-color: rgba(0, 123, 255, 0.1) !important;
         }
-        
-        .nav-tabs .nav-link {
-            border-radius: 8px;
-            min-width: 200px;
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
         }
-        
-        .search-box {
-            max-width: 100%;
+        .tab-pane {
+            padding-top: 1rem;
         }
-        
-        .card-header .row {
-            flex-direction: column;
-            gap: 15px;
+        .empty-state {
+            padding: 3rem 1rem;
+            text-align: center;
+            color: #6c757d;
         }
-        
-        .card-header .row .col-md-6 {
-            width: 100%;
-            text-align: center !important;
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
         }
-        
-        /* Responsive table adjustments */
-        .table-responsive {
-            font-size: 0.875rem;
+        .status-badge {
+            font-size: 0.7em;
+            padding: 0.3em 0.6em;
         }
-        
-        .table th,
-        .table td {
-            padding: 0.5rem;
-        }
-    }
-    
-    /* Date column styling */
-    .loan-date {
-        white-space: nowrap;
-        font-size: 0.875rem;
-        color: #6c757d;
-    }
-</style>
-  
+    </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
         <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content" style="background: rgba(255,255,255,0.09);opacity: 1;filter: blur(0px);"> 
+            <div id="content">
                 <div class="container-fluid" style="margin-top: 100px;">
-                    <div>
-                        <ul class="nav nav-tabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link active" role="tab" data-bs-toggle="tab" href="#tab-1">
-                                    Pending (<?php echo getLoanCount($pending_loans); ?>)
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-2">
-                                    Approved (<?php echo getLoanCount($approved_loans); ?>)
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link" role="tab" data-bs-toggle="tab" href="#tab-3">
-                                    Rejected (<?php echo getLoanCount($rejected_loans); ?>)
-                                </a>
-                            </li>
-                        </ul>
-                        <div class="tab-content">
-                            <!-- Pending Loans Tab -->
-                            <div class="tab-pane active" role="tabpanel" id="tab-1">
-                                <div class="container">
-                                    <div class="card shadow-lg my-5 o-hidden border-0">
-                                        <div class="card-body p-0">
-                                            <div class="row">
-                                                <div class="col-lg-12">
-                                                    <div class="card shadow">
-                                                        <div class="card-header py-3">
-                                                            <div class="row">
-                                                                <div class="col-md-6">
-                                                                    <div class="text-md-end search-container">
-                                                                        <input type="search" class="form-control form-control-sm search-box" 
-                                                                               placeholder="Search pending loans..." 
-                                                                               id="searchPending">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <div class="table-responsive mt-2">
-                                                                <table class="table my-0 table-hover" id="pendingTable">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Loan Number</th>
-                                                                            <th>Applicant Name</th>
-                                                                            <th>Occupation</th>
-                                                                            <th>Collateral</th>
-                                                                            <th>Duration</th>
-                                                                            <th>Loan Amount</th>
-                                                                            <th>Loan Date</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <?php displayLoans($pending_loans, 'pendingTable'); ?>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                    <h3 class="text-dark mb-4">Loans Management</h3>
+                    
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs" id="loanTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
+                                Pending Loans 
+                                <span class="badge bg-warning ms-1"><?php echo count($pending_loans); ?></span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab" aria-controls="approved" aria-selected="false">
+                                Approved Loans 
+                                <span class="badge bg-success ms-1"><?php echo count($approved_loans); ?></span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="rejected-tab" data-bs-toggle="tab" data-bs-target="#rejected" type="button" role="tab" aria-controls="rejected" aria-selected="false">
+                                Rejected Loans 
+                                <span class="badge bg-danger ms-1"><?php echo count($rejected_loans); ?></span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="loanTabsContent">
+                        
+                        <!-- Pending Loans Tab -->
+                        <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+                            <div class="card shadow mt-3">
+                                <div class="card-header py-3">
+                                    <p class="text-primary m-0 fw-bold">Pending Loan Applications</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-12">
+                                            <div class="text-md-end dataTables_filter">
+                                                <input type="search" class="form-control form-control-sm pending-search" 
+                                                       aria-controls="pendingTable" 
+                                                       placeholder="Search pending loans..." 
+                                                       style="text-align: center;">
+                                                <label class="form-label"></label>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table my-0" id="pendingTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Loan Number</th>
+                                                    <th>Applicant Name</th>
+                                                    <th>Occupation</th>
+                                                    <th>Collateral</th>
+                                                    <th>Duration</th>
+                                                    <th>Loan Amount</th>
+                                                    <th>Application Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php displayLoans($pending_loans, 'pendingTable'); ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6 align-self-center">
+                                            <p class="dataTables_info" role="status" aria-live="polite">
+                                                Showing <?php echo count($pending_loans); ?> pending loan(s)
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Approved Loans Tab -->
-                            <div class="tab-pane" role="tabpanel" id="tab-2">
-                                <div class="container">
-                                    <div class="card shadow-lg my-5 o-hidden border-0">
-                                        <div class="card-body p-0">
-                                            <div class="row">
-                                                <div class="col-lg-12">
-                                                    <div class="card shadow">
-                                                        <div class="card-header py-3">
-                                                            <div class="row">
-                                                                <div class="col-md-6">
-                                                                    <div class="text-md-end search-container">
-                                                                        <input type="search" class="form-control form-control-sm search-box" 
-                                                                               placeholder="Search approved loans..." 
-                                                                               id="searchApproved">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <div class="table-responsive mt-2">
-                                                                <table class="table my-0 table-hover" id="approvedTable">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Loan Number</th>
-                                                                            <th>Applicant Name</th>
-                                                                            <th>Occupation</th>
-                                                                            <th>Collateral</th>
-                                                                            <th>Duration</th>
-                                                                            <th>Loan Amount</th>
-                                                                            <th>Loan Date</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <?php displayLoans($approved_loans, 'approvedTable'); ?>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                        </div>
+
+                        <!-- Approved Loans Tab -->
+                        <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
+                            <div class="card shadow mt-3">
+                                <div class="card-header py-3">
+                                    <p class="text-primary m-0 fw-bold">Approved Loans</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-12">
+                                            <div class="text-md-end dataTables_filter">
+                                                <input type="search" class="form-control form-control-sm approved-search" 
+                                                       aria-controls="approvedTable" 
+                                                       placeholder="Search approved loans..." 
+                                                       style="text-align: center;">
+                                                <label class="form-label"></label>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table my-0" id="approvedTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Loan Number</th>
+                                                    <th>Applicant Name</th>
+                                                    <th>Occupation</th>
+                                                    <th>Collateral</th>
+                                                    <th>Duration</th>
+                                                    <th>Loan Amount</th>
+                                                    <th>Approval Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php displayLoans($approved_loans, 'approvedTable'); ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6 align-self-center">
+                                            <p class="dataTables_info" role="status" aria-live="polite">
+                                                Showing <?php echo count($approved_loans); ?> approved loan(s)
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Rejected Loans Tab -->
-                            <div class="tab-pane" role="tabpanel" id="tab-3">
-                                <div class="container">
-                                    <div class="card shadow-lg my-5 o-hidden border-0">
-                                        <div class="card-body p-0">
-                                            <div class="row">
-                                                <div class="col-lg-12">
-                                                    <div class="card shadow">
-                                                        <div class="card-header py-3">
-                                                            <div class="row">
-                                                                <div class="col-md-6">
-                                                                    <div class="text-md-end search-container">
-                                                                        <input type="search" class="form-control form-control-sm search-box" 
-                                                                               placeholder="Search rejected loans..." 
-                                                                               id="searchRejected">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <div class="table-responsive mt-2">
-                                                                <table class="table my-0 table-hover" id="rejectedTable">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Loan Number</th>
-                                                                            <th>Applicant Name</th>
-                                                                            <th>Occupation</th>
-                                                                            <th>Collateral</th>
-                                                                            <th>Duration</th>
-                                                                            <th>Loan Amount</th>
-                                                                            <th>Loan Date</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <?php displayLoans($rejected_loans, 'rejectedTable'); ?>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                        </div>
+
+                        <!-- Rejected Loans Tab -->
+                        <div class="tab-pane fade" id="rejected" role="tabpanel" aria-labelledby="rejected-tab">
+                            <div class="card shadow mt-3">
+                                <div class="card-header py-3">
+                                    <p class="text-primary m-0 fw-bold">Rejected Loans</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 col-lg-12">
+                                            <div class="text-md-end dataTables_filter">
+                                                <input type="search" class="form-control form-control-sm rejected-search" 
+                                                       aria-controls="rejectedTable" 
+                                                       placeholder="Search rejected loans..." 
+                                                       style="text-align: center;">
+                                                <label class="form-label"></label>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table my-0" id="rejectedTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Loan Number</th>
+                                                    <th>Applicant Name</th>
+                                                    <th>Occupation</th>
+                                                    <th>Collateral</th>
+                                                    <th>Duration</th>
+                                                    <th>Loan Amount</th>
+                                                    <th>Rejection Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php displayLoans($rejected_loans, 'rejectedTable'); ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6 align-self-center">
+                                            <p class="dataTables_info" role="status" aria-live="polite">
+                                                Showing <?php echo count($rejected_loans); ?> rejected loan(s)
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -412,66 +305,83 @@ function getLoanCount($loans) {
         <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
     </div>
     
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script src="assets/js/script.min.js"></script>
     <script>
-        function viewLoanDetails(loanId) {
-            // Redirect to loan details page with the loan ID
-            window.location.href = 'loan_review.php?loan_id=' + loanId;
-        }
-        
-        // Search functionality for all tables
-        function initializeSearch(searchInputId, tableId) {
-            const searchInput = document.getElementById(searchInputId);
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
+        // Make rows clickable and redirect to loan details
+        document.addEventListener('DOMContentLoaded', function() {
+            const clickableRows = document.querySelectorAll('.clickable-row');
+            
+            clickableRows.forEach(row => {
+                row.addEventListener('click', function() {
+                    const loanId = this.getAttribute('data-loan-id');
+                    if (loanId) {
+                        window.location.href = 'loan_review.php?loan_id=' + loanId;
+                    }
+                });
+            });
+
+            // Search functionality for pending loans
+            const pendingSearch = document.querySelector('.pending-search');
+            if (pendingSearch) {
+                pendingSearch.addEventListener('input', function() {
                     const searchTerm = this.value.toLowerCase();
-                    const table = document.getElementById(tableId);
-                    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                    const rows = document.querySelectorAll('#pendingTable .clickable-row');
                     
-                    for (let i = 0; i < rows.length; i++) {
-                        const row = rows[i];
+                    rows.forEach(row => {
                         const text = row.textContent.toLowerCase();
                         if (text.includes(searchTerm)) {
                             row.style.display = '';
                         } else {
                             row.style.display = 'none';
                         }
-                    }
+                    });
                 });
             }
-        }
-        
-        // Optional: Add keyboard navigation support
-        document.addEventListener('DOMContentLoaded', function() {
-            const rows = document.querySelectorAll('tbody tr[onclick]');
-            rows.forEach(row => {
-                row.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        const onclickAttr = this.getAttribute('onclick');
-                        const match = onclickAttr.match(/viewLoanDetails\((\d+)\)/);
-                        if (match) {
-                            viewLoanDetails(match[1]);
+
+            // Search functionality for approved loans
+            const approvedSearch = document.querySelector('.approved-search');
+            if (approvedSearch) {
+                approvedSearch.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('#approvedTable .clickable-row');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
                         }
-                    }
+                    });
                 });
-                
-                // Make rows focusable for accessibility
-                row.setAttribute('tabindex', '0');
-                row.classList.add('clickable-row');
-            });
-            
-            // Initialize search functionality for all tabs
-            initializeSearch('searchPending', 'pendingTable');
-            initializeSearch('searchApproved', 'approvedTable');
-            initializeSearch('searchRejected', 'rejectedTable');
-            
+            }
+
+            // Search functionality for rejected loans
+            const rejectedSearch = document.querySelector('.rejected-search');
+            if (rejectedSearch) {
+                rejectedSearch.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('#rejectedTable .clickable-row');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
             // Clear search when switching tabs
             document.querySelectorAll('.nav-link').forEach(tab => {
                 tab.addEventListener('click', function() {
                     // Clear all search inputs
-                    document.getElementById('searchPending').value = '';
-                    document.getElementById('searchApproved').value = '';
-                    document.getElementById('searchRejected').value = '';
+                    document.querySelector('.pending-search').value = '';
+                    document.querySelector('.approved-search').value = '';
+                    document.querySelector('.rejected-search').value = '';
                     
                     // Show all rows again
                     const tables = ['pendingTable', 'approvedTable', 'rejectedTable'];
@@ -488,8 +398,5 @@ function getLoanCount($loans) {
             });
         });
     </script>
-    
-    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
-    <script src="assets/js/script.min.js"></script>
 </body>
 </html>

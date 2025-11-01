@@ -375,7 +375,8 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
-
+                <br><br>
+                <h3>Loan Requests Section</h3><br>
                 <!-- Row 2: Loan Requests Section -->
                 <div class="row">
                     <!-- Recent Loan Requests Table -->
@@ -516,7 +517,8 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
-
+                <br><br>
+                <h3>Misc</h3><br>
                 <!-- Row 3: System Statistics and Todo List -->
                 <div class="row">
                     <!-- System Statistics -->
@@ -555,12 +557,6 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
                                     </div>
                                 </div>
                                 
-                                <h4 class="small fw-bold">System Performance<span class="float-end">85%</span></h4>
-                                <div class="progress mb-4">
-                                    <div class="progress-bar bg-info" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100" style="width: 85%;">
-                                        <span class="visually-hidden">85%</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
