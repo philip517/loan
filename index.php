@@ -73,7 +73,7 @@ if (isset($_SESSION['user_id'])) {
                                     </form>
 
                                     <div class="text-center">
-                                        <a class="small" href="forgot-password.html">Forgot Password?</a><br>
+                                        <a class="small" href="forgot_password/index.php">Forgot Password?</a><br>
                                         <a class="small" href="register.php">SignUp?</a>
 
                                     </div>
