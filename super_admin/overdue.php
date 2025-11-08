@@ -10,6 +10,21 @@ if (!$user_id) {
     exit;
 }
 
+// Function to calculate overdue penalty
+function calculateOverduePenalty($days_overdue, $loan_amount, $original_interest) {
+    $penalty_per_day = 15; // K15 per day
+    $penalty_amount = $days_overdue * $penalty_per_day;
+    $total_interest = $original_interest + $penalty_amount;
+    $total_amount_due = $loan_amount + $total_interest;
+    
+    return [
+        'penalty_per_day' => $penalty_per_day,
+        'penalty_amount' => $penalty_amount,
+        'total_interest' => $total_interest,
+        'total_amount_due' => $total_amount_due
+    ];
+}
+
 // Fetch all approved loans with overdue status
 $approved_loans_query = "
     SELECT 
@@ -47,19 +62,28 @@ $current_loans = array_filter($all_approved_loans, function($loan) {
     return $loan['loan_status'] === 'current';
 });
 
-// Calculate totals
+// Calculate totals with penalties
 $total_overdue_amount = 0;
 $total_overdue_interest = 0;
+$total_overdue_penalty = 0;
+$total_overdue_total_due = 0;
+
 foreach ($overdue_loans as $loan) {
+    $penalty_calc = calculateOverduePenalty($loan['days_overdue'], $loan['amount'], $loan['interest']);
     $total_overdue_amount += $loan['amount'];
-    $total_overdue_interest += $loan['interest'];
+    $total_overdue_interest += $penalty_calc['total_interest'];
+    $total_overdue_penalty += $penalty_calc['penalty_amount'];
+    $total_overdue_total_due += $penalty_calc['total_amount_due'];
 }
 
 $total_current_amount = 0;
 $total_current_interest = 0;
+$total_current_total_due = 0;
+
 foreach ($current_loans as $loan) {
     $total_current_amount += $loan['amount'];
     $total_current_interest += $loan['interest'];
+    $total_current_total_due += $loan['amount'] + $loan['interest'];
 }
 ?>
 
@@ -117,6 +141,17 @@ foreach ($current_loans as $loan) {
         .currency-symbol {
             font-weight: bold;
             color: #2c3e50;
+        }
+        .penalty-amount {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .penalty-info {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -180,7 +215,7 @@ foreach ($current_loans as $loan) {
                                                 <span><?php echo count($overdue_loans); ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>Total: <span class="currency-symbol">K</span><?php echo number_format($total_overdue_amount, 2); ?></span>
+                                                <span>Total Due: <span class="currency-symbol">K</span><?php echo number_format($total_overdue_total_due, 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
@@ -204,7 +239,7 @@ foreach ($current_loans as $loan) {
                                                 <span><?php echo count($current_loans); ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>Total: <span class="currency-symbol">K</span><?php echo number_format($total_current_amount, 2); ?></span>
+                                                <span>Total Due: <span class="currency-symbol">K</span><?php echo number_format($total_current_total_due, 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
@@ -215,24 +250,24 @@ foreach ($current_loans as $loan) {
                             </div>
                         </div>
 
-                        <!-- Total Interest Card -->
+                        <!-- Total Penalties Card -->
                         <div class="col-md-6 col-xl-3 mb-4">
                             <div class="card shadow border-left-warning loan-card">
                                 <div class="card-body">
                                     <div class="row g-0 align-items-center">
                                         <div class="col me-2">
                                             <div class="text-uppercase text-warning mb-1 fw-bold text-xs">
-                                                <span>Total Interest</span>
+                                                <span>Total Penalties</span>
                                             </div>
                                             <div class="text-dark mb-0 fw-bold h5">
-                                                <span><span class="currency-symbol">K</span><?php echo number_format($total_overdue_interest + $total_current_interest, 2); ?></span>
+                                                <span><span class="currency-symbol">K</span><?php echo number_format($total_overdue_penalty, 2); ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>From all approved loans</span>
+                                                <span>From overdue loans</span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
-                                            <i class="fas fa-coins fa-2x text-warning"></i>
+                                            <i class="fas fa-money-bill-wave fa-2x text-warning"></i>
                                         </div>
                                     </div>
                                 </div>
@@ -250,11 +285,15 @@ foreach ($current_loans as $loan) {
                                         Overdue Loans (<?php echo count($overdue_loans); ?>)
                                     </h6>
                                     <span class="badge bg-light text-danger fs-6">
-                                        Total Overdue: <span class="currency-symbol">K</span><?php echo number_format($total_overdue_amount, 2); ?>
+                                        Total Due: <span class="currency-symbol">K</span><?php echo number_format($total_overdue_total_due, 2); ?>
                                     </span>
                                 </div>
                                 <div class="card-body">
                                     <?php if (!empty($overdue_loans)): ?>
+                                        <div class="alert alert-warning mb-4">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Penalty Notice:</strong> Overdue loans incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
+                                        </div>
                                         <div class="table-responsive">
                                             <table class="table table-sm table-hover" id="overdueTable">
                                                 <thead>
@@ -264,9 +303,10 @@ foreach ($current_loans as $loan) {
                                                         <th>Loan Number</th>
                                                         <th>Client Name</th>
                                                         <th>Loan Amount</th>
-                                                        <th>Interest</th>
+                                                        <th>Original Interest</th>
+                                                        <th>Penalty Amount</th>
+                                                        <th>Total Interest</th>
                                                         <th>Total Due</th>
-                                                        <th>Start Date</th>
                                                         <th>End Date</th>
                                                         <th>Actions</th>
                                                     </tr>
@@ -274,17 +314,16 @@ foreach ($current_loans as $loan) {
                                                 <tbody>
                                                     <?php foreach ($overdue_loans as $loan): ?>
                                                         <?php
-                                                        $total_due = $loan['amount'] + $loan['interest'];
-                                                        $days_overdue = $loan['days_overdue'];
+                                                        $penalty_calc = calculateOverduePenalty($loan['days_overdue'], $loan['amount'], $loan['interest']);
                                                         ?>
-                                                        <tr class="<?php echo $days_overdue > 30 ? 'table-danger' : 'table-warning'; ?>">
+                                                        <tr class="<?php echo $loan['days_overdue'] > 30 ? 'table-danger' : 'table-warning'; ?>">
                                                             <td>
                                                                 <span class="status-indicator status-overdue"></span>
                                                                 <span class="overdue-badge">OVERDUE</span>
                                                             </td>
                                                             <td>
                                                                 <span class="badge bg-danger fs-6">
-                                                                    <?php echo $days_overdue; ?> days
+                                                                    <?php echo $loan['days_overdue']; ?> days
                                                                 </span>
                                                             </td>
                                                             <td>
@@ -301,11 +340,16 @@ foreach ($current_loans as $loan) {
                                                             <td>
                                                                 <span class="currency-symbol">K</span><?php echo number_format($loan['interest'], 2); ?>
                                                             </td>
-                                                            <td>
-                                                                <strong class="text-danger"><span class="currency-symbol">K</span><?php echo number_format($total_due, 2); ?></strong>
+                                                            <td class="penalty-amount">
+                                                                +<span class="currency-symbol">K</span><?php echo number_format($penalty_calc['penalty_amount'], 2); ?>
+                                                                <br>
+                                                                <small class="text-muted">(K15 × <?php echo $loan['days_overdue']; ?> days)</small>
                                                             </td>
                                                             <td>
-                                                                <?php echo date('M j, Y', strtotime($loan['loan_start_date'])); ?>
+                                                                <strong><span class="currency-symbol">K</span><?php echo number_format($penalty_calc['total_interest'], 2); ?></strong>
+                                                            </td>
+                                                            <td>
+                                                                <strong class="text-danger"><span class="currency-symbol">K</span><?php echo number_format($penalty_calc['total_amount_due'], 2); ?></strong>
                                                             </td>
                                                             <td>
                                                                 <?php echo date('M j, Y', strtotime($loan['loan_end_date'])); ?>
@@ -331,9 +375,11 @@ foreach ($current_loans as $loan) {
                                                     <tr class="table-secondary">
                                                         <td colspan="4" class="text-end"><strong>Totals:</strong></td>
                                                         <td><strong><span class="currency-symbol">K</span><?php echo number_format($total_overdue_amount, 2); ?></strong></td>
+                                                        <td><strong><span class="currency-symbol">K</span><?php echo number_format(array_sum(array_column($overdue_loans, 'interest')), 2); ?></strong></td>
+                                                        <td class="penalty-amount"><strong>+<span class="currency-symbol">K</span><?php echo number_format($total_overdue_penalty, 2); ?></strong></td>
                                                         <td><strong><span class="currency-symbol">K</span><?php echo number_format($total_overdue_interest, 2); ?></strong></td>
-                                                        <td><strong class="text-danger"><span class="currency-symbol">K</span><?php echo number_format($total_overdue_amount + $total_overdue_interest, 2); ?></strong></td>
-                                                        <td colspan="3"></td>
+                                                        <td><strong class="text-danger"><span class="currency-symbol">K</span><?php echo number_format($total_overdue_total_due, 2); ?></strong></td>
+                                                        <td colspan="2"></td>
                                                     </tr>
                                                 </tfoot>
                                             </table>
@@ -360,7 +406,7 @@ foreach ($current_loans as $loan) {
                                         Current Loans (<?php echo count($current_loans); ?>)
                                     </h6>
                                     <span class="badge bg-light text-success fs-6">
-                                        Total Current: <span class="currency-symbol">K</span><?php echo number_format($total_current_amount, 2); ?>
+                                        Total Due: <span class="currency-symbol">K</span><?php echo number_format($total_current_total_due, 2); ?>
                                     </span>
                                 </div>
                                 <div class="card-body">
@@ -437,7 +483,7 @@ foreach ($current_loans as $loan) {
                                                         <td colspan="4" class="text-end"><strong>Totals:</strong></td>
                                                         <td><strong><span class="currency-symbol">K</span><?php echo number_format($total_current_amount, 2); ?></strong></td>
                                                         <td><strong><span class="currency-symbol">K</span><?php echo number_format($total_current_interest, 2); ?></strong></td>
-                                                        <td><strong class="text-success"><span class="currency-symbol">K</span><?php echo number_format($total_current_amount + $total_current_interest, 2); ?></strong></td>
+                                                        <td><strong class="text-success"><span class="currency-symbol">K</span><?php echo number_format($total_current_total_due, 2); ?></strong></td>
                                                         <td colspan="3"></td>
                                                     </tr>
                                                 </tfoot>
@@ -475,12 +521,10 @@ foreach ($current_loans as $loan) {
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
     <script>
-        // Simple client-side sorting and filtering could be added here
         document.addEventListener('DOMContentLoaded', function() {
-            // Add any interactive functionality here
             console.log('Approved Loans page loaded');
             
-            // Example: Add row click functionality
+            // Add row click functionality
             const tableRows = document.querySelectorAll('tbody tr');
             tableRows.forEach(row => {
                 row.addEventListener('click', function() {
@@ -493,4 +537,4 @@ foreach ($current_loans as $loan) {
         });
     </script>
 </body>
-</html>
+</html> 
