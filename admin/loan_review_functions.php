@@ -35,88 +35,28 @@ function recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, $decision, $a
     }
 }
 
-// Handle loan status update (approve/reject/pending)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+// Handle loan request creation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_request'])) {
     try {
-        $new_status = $_POST['status'];
-        $admin_notes = $_POST['admin_notes'] ?? '';
-        
-        // Debug: Check session data
+        $request_message = $_POST['request_message'];
         $admin_id = $_SESSION['user_id'] ?? null;
-        error_log("Admin ID from session: " . ($admin_id ?? 'NOT SET'));
         
         if (!$admin_id) {
             throw new Exception("Admin ID not found in session. Please log in again.");
         }
 
-        // Fetch loan details including loan number, current status, and duration
-        $loan_sql = "SELECT loan_number, status, duration FROM loan WHERE loan_id = ?";
-        $loan_stmt = $pdo->prepare($loan_sql);
-        $loan_stmt->execute([$loan_id]);
-        $loan_data = $loan_stmt->fetch(PDO::FETCH_ASSOC);
+        // Insert into loan_requests table
+        $request_sql = "INSERT INTO loan_requests (loan_id, admin_id, request_message, status) VALUES (?, ?, ?, 'pending')";
+        $request_stmt = $pdo->prepare($request_sql);
+        $request_stmt->execute([$loan_id, $admin_id, $request_message]);
         
-        if (!$loan_data) {
-            throw new Exception("Loan not found");
-        }
-        
-        $loan_number = $loan_data['loan_number'] ?? null;
-        $current_status = $loan_data['status'] ?? 'pending';
-        $loan_duration = $loan_data['duration'] ?? 0;
-
-        // Debug: Check current values
-        error_log("Loan Number: " . ($loan_number ?? 'NULL') . ", Current Status: $current_status, New Status: $new_status, Duration: $loan_duration weeks");
-
-        if (!$loan_number) {
-            throw new Exception("Loan number not found for this loan");
-        }
-
-        // Prepare update SQL based on status
-        if ($new_status === 'approved' && $current_status !== 'approved') {
-            // Calculate dates for approved loan
-            $start_date = date('Y-m-d'); // Current date as start date
-            $end_date = date('Y-m-d', strtotime("+$loan_duration weeks")); // Add weeks to start date
-            
-            error_log("Setting loan dates - Start: $start_date, End: $end_date (Duration: $loan_duration weeks)");
-            
-            // Update loan status AND dates
-            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = ? WHERE loan_id = ?";
-            $update_stmt = $pdo->prepare($update_sql);
-            $update_stmt->execute([$new_status, $start_date, $end_date, $loan_id]);
-            
-            $_SESSION['success_message'] = "Loan approved successfully! Start date set to today and end date calculated based on " . $loan_duration . " week(s) duration.";
-            
-        } else {
-            // For other status changes (rejected, pending), only update status
-            $update_sql = "UPDATE loan SET status = ? WHERE loan_id = ?";
-            $update_stmt = $pdo->prepare($update_sql);
-            $update_stmt->execute([$new_status, $loan_id]);
-            
-            $_SESSION['success_message'] = "Loan status updated to " . ucfirst($new_status) . " successfully!";
-        }
-        
-        // Record in loan_reviews table if status changed (including pending)
-        if (($new_status === 'approved' || $new_status === 'rejected' || $new_status === 'pending') && $current_status !== $new_status) {
-            error_log("Attempting to record loan review for status: " . $new_status);
-            
-            $review_id = recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, $new_status, $admin_notes);
-            
-            if ($review_id) {
-                $_SESSION['success_message'] .= " Review recorded in audit trail.";
-                error_log("Loan review recorded successfully with ID: " . $review_id);
-            } else {
-                $_SESSION['warning_message'] = "Loan status updated but review recording failed. Please check error logs.";
-                error_log("Loan review recording failed");
-            }
-        } else {
-            error_log("No review recorded - status didn't change or was already set");
-        }
-        
+        $_SESSION['success_message'] = "Loan request created successfully! The client will be notified.";
         header("Location: loan_review.php?loan_id=" . $loan_id);
         exit;
         
     } catch (Exception $e) {
-        $_SESSION['error_message'] = "Failed to update loan status. Please try again. Error: " . $e->getMessage();
-        error_log("Error in status update: " . $e->getMessage());
+        $_SESSION['error_message'] = "Failed to create loan request. Please try again. Error: " . $e->getMessage();
+        error_log("Error in loan request creation: " . $e->getMessage());
     }
 }
 
@@ -198,6 +138,23 @@ function getAllLoanReviews($pdo, $loan_id) {
         
     } catch (PDOException $e) {
         error_log("Error fetching all loan reviews: " . $e->getMessage());
+        return [];
+    }
+}
+
+// Function to get loan requests for this loan
+function getLoanRequests($pdo, $loan_id) {
+    try {
+        $sql = "SELECT lr.*, a.username as admin_name 
+                FROM loan_requests lr 
+                LEFT JOIN admin_users a ON lr.admin_id = a.admin_id 
+                WHERE lr.loan_id = ? 
+                ORDER BY lr.date_of_request DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$loan_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Error fetching loan requests: " . $e->getMessage());
         return [];
     }
 }
@@ -384,6 +341,68 @@ function displayLoanDetails($loan, $pdo) {
         </div>
     </div>';
     
+    // Get loan requests for this loan
+    $loan_requests = getLoanRequests($pdo, $loan['loan_id']);
+    $loan_requests_section = '';
+    
+    if (!empty($loan_requests)) {
+        $loan_requests_section = '
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-primary shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="fas fa-hand-holding-usd me-2"></i>Loan Requests</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date Requested</th>
+                                        <th>Request Message</th>
+                                        <th>Status</th>
+                                        <th>Requested By</th>
+                                        <th>Admin Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>';
+        
+        foreach ($loan_requests as $request) {
+            $status_badge = match($request['status']) {
+                'pending' => '<span class="badge bg-warning">Pending</span>',
+                'approved' => '<span class="badge bg-success">Approved</span>',
+                'rejected' => '<span class="badge bg-danger">Rejected</span>',
+                'completed' => '<span class="badge bg-info">Completed</span>',
+                default => '<span class="badge bg-secondary">' . $request['status'] . '</span>'
+            };
+            
+            $admin_name_display = $request['admin_name'] ?? 'Admin #' . $request['admin_id'];
+            $notes_preview = !empty($request['admin_notes']) 
+                ? '<span class="text-muted" title="' . htmlspecialchars($request['admin_notes']) . '">' 
+                  . (strlen($request['admin_notes']) > 50 ? substr($request['admin_notes'], 0, 50) . '...' : $request['admin_notes']) 
+                  . '</span>'
+                : '<span class="text-muted">No notes</span>';
+            
+            $loan_requests_section .= '
+                                    <tr>
+                                        <td>' . date('M j, Y g:i A', strtotime($request['date_of_request'])) . '</td>
+                                        <td>' . nl2br(htmlspecialchars($request['request_message'])) . '</td>
+                                        <td>' . $status_badge . '</td>
+                                        <td>' . $admin_name_display . '</td>
+                                        <td>' . $notes_preview . '</td>
+                                    </tr>';
+        }
+        
+        $loan_requests_section .= '
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    }
+    
     // Overdue alert section
     $overdue_alert = '';
     if ($is_overdue && $loan['status'] === 'overdue') {
@@ -422,6 +441,82 @@ function displayLoanDetails($loan, $pdo) {
         </div>';
     }
     
+    // Admin Actions Section - Only show Send Loan Request button for non-pending loans
+    $admin_actions_section = '';
+    
+    if ($loan['status'] !== 'pending') {
+        // For non-pending loans, only show the Send Loan Request button
+        $admin_actions_section = '
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center">
+                            <button class="btn btn-warning btn-lg me-3" type="button" data-bs-toggle="modal" data-bs-target="#requestModal">
+                                <i class="fas fa-hand-holding-usd me-2"></i>Send Loan Request
+                            </button>
+                            <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#messageModal">
+                                <i class="fas fa-envelope me-2"></i>Send Message to Client
+                            </button>
+                            <a href="loan.php" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Loans
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    } else {
+        // For pending loans, show the full admin actions (status update + buttons)
+        $admin_actions_section = '
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label"><strong>Update Loan Status</strong></label>
+                                <select class="form-select" name="status" required>
+                                    <option value="pending" ' . ($loan['status'] == 'pending' ? 'selected' : '') . '>Pending</option>
+                                    <option value="approved" ' . ($loan['status'] == 'approved' ? 'selected' : '') . '>Approve</option>
+                                    <option value="rejected" ' . ($loan['status'] == 'rejected' ? 'selected' : '') . '>Reject</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Admin Notes</strong></label>
+                                <textarea class="form-control" name="admin_notes" rows="2" 
+                                          placeholder="Add notes about this loan decision...">' . ($review_info['admin_notes'] ?? '') . '</textarea>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" name="update_status" class="btn btn-primary w-100">
+                                    <i class="fas fa-save me-2"></i>Update
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-3 text-end">
+                            <button class="btn btn-warning me-2" type="button" data-bs-toggle="modal" data-bs-target="#requestModal">
+                                <i class="fas fa-hand-holding-usd me-2"></i>Send Loan Request
+                            </button>
+                            <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#messageModal">
+                                <i class="fas fa-envelope me-2"></i>Send Message to Client
+                            </button>
+                            <a href="loan.php" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Loans
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    }
+    
     return '
     <div class="card shadow-lg border-0 mb-4">
         <div class="card-header bg-white py-3">
@@ -447,6 +542,7 @@ function displayLoanDetails($loan, $pdo) {
             ' . $overdue_alert . '
             ' . $review_section . '
             ' . $past_reviews_section . '
+            ' . $loan_requests_section . '
             
             <div class="row">
                 <!-- Client Information -->
@@ -548,47 +644,7 @@ function displayLoanDetails($loan, $pdo) {
                 </div>
             </div>
             
-            <!-- Admin Actions -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-dark text-white">
-                            <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Actions</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST" action="" class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label"><strong>Update Loan Status</strong></label>
-                                    <select class="form-select" name="status" required>
-                                        <option value="pending" ' . ($loan['status'] == 'pending' ? 'selected' : '') . '>Pending</option>
-                                        <option value="approved" ' . ($loan['status'] == 'approved' ? 'selected' : '') . '>Approve</option>
-                                        <option value="rejected" ' . ($loan['status'] == 'rejected' ? 'selected' : '') . '>Reject</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label"><strong>Admin Notes</strong></label>
-                                    <textarea class="form-control" name="admin_notes" rows="2" 
-                                              placeholder="Add notes about this loan decision...">' . ($review_info['admin_notes'] ?? '') . '</textarea>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button type="submit" name="update_status" class="btn btn-primary w-100">
-                                        <i class="fas fa-save me-2"></i>Update
-                                    </button>
-                                </div>
-                            </form>
-                            
-                            <div class="mt-3 text-end">
-                                <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#messageModal">
-                                    <i class="fas fa-envelope me-2"></i>Send Message to Client
-                                </button>
-                                <a href="loan.php" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left me-2"></i>Back to Loans
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            ' . $admin_actions_section . '
         </div>
     </div>';
 }

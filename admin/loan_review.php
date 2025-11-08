@@ -156,6 +156,48 @@ require 'loan_review_functions.php';
                 </div>
             </div>
 
+                          <!-- Request Modal -->
+            <div class="modal fade" role="dialog" tabindex="-1" id="requestModal">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <form method="POST" action="">
+                            <div class="modal-header bg-warning text-dark">
+                                <h4 class="modal-title"><i class="fas fa-hand-holding-usd me-2"></i>Create Loan Request</h4>
+                                <button class="btn-close" type="button" aria-label="Close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="create_request" value="1">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Request Message</label>
+                                    <textarea class="form-control" name="request_message" rows="6" 
+                                              placeholder="Describe your request in detail. Be specific about what information or action is needed..." required></textarea>
+                                    <div class="form-text">
+                                        Examples: "Need additional collateral documentation", "Require clarification on employment details", 
+                                        "Request updated bank statements", etc.
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <small>
+                                        <i class="fas fa-info-circle"></i> 
+                                        This request will be associated with Loan #<strong><?php echo $loan['loan_number'] ?? 'N/A'; ?></strong>
+                                        for client <strong><?php echo $loan['first_name'] . ' ' . $loan['last_name']; ?></strong>
+                                        <br>Request will be recorded in the system for tracking and follow-up.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+                                <button class="btn btn-warning" type="submit">
+                                    <i class="fas fa-paper-plane me-2"></i>Create Request
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <!-- Image Preview Modal -->
             <div class="modal fade" role="dialog" tabindex="-1" id="imageModal">
                 <div class="modal-dialog modal-xl modal-dialog-centered" role="document">

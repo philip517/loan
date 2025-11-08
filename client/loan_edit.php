@@ -61,19 +61,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_loan'])) {
             $user_id
         ]);
         
-        // Calculate new end date based on duration
+        // Calculate new dates - start date is current date, end date based on duration
         $new_duration = $_POST['loan_duration'];
-        $start_date = $loan['loan_start_date']; // Use original start date
-        $new_end_date = date('Y-m-d', strtotime($start_date . ' + ' . $new_duration . ' weeks'));
+        $new_start_date = date('Y-m-d'); // Current date as new start date
+        $new_end_date = date('Y-m-d', strtotime($new_start_date . ' + ' . $new_duration . ' weeks'));
         
         // Calculate interest at 10% per week
         $weekly_interest_rate = 0.10; // 10% per week
         $total_interest_rate = $weekly_interest_rate * $new_duration;
         $interest_amount = $_POST['loan_amount'] * $total_interest_rate;
         
-        // Update loan information including end date
+        // Update loan information including new start and end dates
         $loan_sql = "UPDATE loan SET 
-                    amount = ?, duration = ?, interest = ?, collateral_name = ?, loan_end_date = ? 
+                    amount = ?, duration = ?, interest = ?, collateral_name = ?, 
+                    loan_start_date = ?, loan_end_date = ? 
                     WHERE loan_id = ? AND user_id = ?";
         $loan_stmt = $pdo->prepare($loan_sql);
         $loan_stmt->execute([
@@ -81,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_loan'])) {
             $new_duration,
             $interest_amount,
             $_POST['collateral_name'],
+            $new_start_date,
             $new_end_date,
             $loan_id,
             $user_id
@@ -123,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_loan'])) {
         
         $pdo->commit();
         
-        $_SESSION['success_message'] = "Loan application updated successfully!";
+        $_SESSION['success_message'] = "Loan application updated successfully! Loan period has been reset from today.";
         header("Location: loan_details.php?loan_id=" . $loan_id);
         exit;
         
@@ -139,6 +141,9 @@ $total_interest_rate = $weekly_interest_rate * $loan['duration'];
 $calculated_interest = $loan['amount'] * $total_interest_rate;
 $interest_percentage = $total_interest_rate * 100;
 $total_repayment = $loan['amount'] + $calculated_interest;
+
+// Get current date for new start date calculation
+$current_date = date('Y-m-d');
 ?>
 
 <!DOCTYPE html>
@@ -429,6 +434,11 @@ $total_repayment = $loan['amount'] + $calculated_interest;
                                                 <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Loan Information</h5>
                                             </div>
                                             <div class="card-body">
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-sync-alt me-2"></i>
+                                                    <strong>Note:</strong> When updating this loan application, the start date will be reset to today (<strong><?php echo date('F j, Y'); ?></strong>) and the loan period will be recalculated.
+                                                </div>
+                                                
                                                 <div class="row">
                                                     <div class="col-md-6">
                                                         <div class="mb-3">
@@ -464,7 +474,7 @@ $total_repayment = $loan['amount'] + $calculated_interest;
                                                         <div class="card bg-light">
                                                             <div class="card-body">
                                                                 <h6 class="card-title">Current Dates</h6>
-                                                                <p class="mb-1"><strong>Start Date:</strong> <?php echo $loan['loan_start_date']; ?></p>
+                                                                <p class="mb-1"><strong>Original Start:</strong> <?php echo $loan['loan_start_date']; ?></p>
                                                                 <p class="mb-0"><strong>Current End Date:</strong> <?php echo $loan['loan_end_date']; ?></p>
                                                             </div>
                                                         </div>
@@ -472,9 +482,10 @@ $total_repayment = $loan['amount'] + $calculated_interest;
                                                     <div class="col-md-6">
                                                         <div class="card bg-light">
                                                             <div class="card-body">
-                                                                <h6 class="card-title">New End Date</h6>
-                                                                <p class="mb-0"><strong id="new_end_date_display"><?php echo $loan['loan_end_date']; ?></strong></p>
-                                                                <small class="text-muted">This will be updated based on the duration selected</small>
+                                                                <h6 class="card-title">New Dates After Update</h6>
+                                                                <p class="mb-1"><strong>New Start Date:</strong> <span id="new_start_date_display"><?php echo date('F j, Y'); ?></span></p>
+                                                                <p class="mb-0"><strong>New End Date:</strong> <span id="new_end_date_display"><?php echo date('F j, Y', strtotime('+' . $loan['duration'] . ' weeks')); ?></span></p>
+                                                                <small class="text-muted">Dates will be recalculated based on today</small>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -513,7 +524,7 @@ $total_repayment = $loan['amount'] + $calculated_interest;
                                                 
                                                 <div class="alert alert-warning mt-4">
                                                     <i class="fas fa-exclamation-triangle me-2"></i>
-                                                    <strong>Important:</strong> By updating this application, you agree to the terms and conditions of the loan. The loan end date will be recalculated based on the new duration.
+                                                    <strong>Important:</strong> By updating this application, you agree to the terms and conditions of the loan. The loan period will be reset starting from today.
                                                 </div>
                                                 
                                                 <div class="text-center mt-4">
@@ -576,21 +587,20 @@ $total_repayment = $loan['amount'] + $calculated_interest;
             }
         }
         
-        // Calculate new end date based on duration
-        function calculateNewEndDate(duration) {
-            const startDate = '<?php echo $loan['loan_start_date']; ?>';
-            if (!startDate) return '';
+        // Calculate new dates based on duration (using current date as start)
+        function calculateNewDates(duration) {
+            const startDate = new Date(); // Current date
+            const newEndDate = new Date(startDate);
+            newEndDate.setDate(startDate.getDate() + (duration * 7)); // Add weeks as days
             
-            const start = new Date(startDate);
-            const newEndDate = new Date(start);
-            newEndDate.setDate(start.getDate() + (duration * 7)); // Add weeks as days
-            
-            return newEndDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            return {
+                startDate: startDate,
+                endDate: newEndDate
+            };
         }
         
         // Format date for display
-        function formatDateForDisplay(dateString) {
-            const date = new Date(dateString);
+        function formatDateForDisplay(date) {
             return date.toLocaleDateString('en-US', { 
                 year: 'numeric', 
                 month: 'long', 
@@ -613,12 +623,11 @@ $total_repayment = $loan['amount'] + $calculated_interest;
             // Update interest rate display
             document.getElementById('interest_rate_display').textContent = 'Total interest rate: ' + interestPercentage.toFixed(1) + '%';
             
-            // Calculate and display new end date
+            // Calculate and display new dates
             if (duration > 0) {
-                const newEndDate = calculateNewEndDate(duration);
-                if (newEndDate) {
-                    document.getElementById('new_end_date_display').textContent = formatDateForDisplay(newEndDate);
-                }
+                const dates = calculateNewDates(duration);
+                document.getElementById('new_start_date_display').textContent = formatDateForDisplay(dates.startDate);
+                document.getElementById('new_end_date_display').textContent = formatDateForDisplay(dates.endDate);
             }
             
             // Update display
