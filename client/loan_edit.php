@@ -66,6 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_loan'])) {
         $start_date = $loan['loan_start_date']; // Use original start date
         $new_end_date = date('Y-m-d', strtotime($start_date . ' + ' . $new_duration . ' weeks'));
         
+        // Calculate interest at 10% per week
+        $weekly_interest_rate = 0.10; // 10% per week
+        $total_interest_rate = $weekly_interest_rate * $new_duration;
+        $interest_amount = $_POST['loan_amount'] * $total_interest_rate;
+        
         // Update loan information including end date
         $loan_sql = "UPDATE loan SET 
                     amount = ?, duration = ?, interest = ?, collateral_name = ?, loan_end_date = ? 
@@ -74,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_loan'])) {
         $loan_stmt->execute([
             $_POST['loan_amount'],
             $new_duration,
-            $_POST['interest_amount'],
+            $interest_amount,
             $_POST['collateral_name'],
             $new_end_date,
             $loan_id,
@@ -128,9 +133,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_loan'])) {
     }
 }
 
-// Calculate interest for pre-filled values
-$interest_percentage = $loan['amount'] > 0 ? ($loan['interest'] / $loan['amount']) * 100 : 0;
-$total_repayment = $loan['amount'] + $loan['interest'];
+// Calculate interest for pre-filled values using 10% per week
+$weekly_interest_rate = 0.10;
+$total_interest_rate = $weekly_interest_rate * $loan['duration'];
+$calculated_interest = $loan['amount'] * $total_interest_rate;
+$interest_percentage = $total_interest_rate * 100;
+$total_repayment = $loan['amount'] + $calculated_interest;
 ?>
 
 <!DOCTYPE html>
@@ -443,6 +451,13 @@ $total_repayment = $loan['amount'] + $loan['interest'];
                                                     </div>
                                                 </div>
                                                 
+                                                <!-- Interest Rate Information -->
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle me-2"></i>
+                                                    <strong>Interest Rate:</strong> 10% per week. 
+                                                    <span id="interest_rate_display">Total interest rate: <?php echo number_format($interest_percentage, 1); ?>%</span>
+                                                </div>
+                                                
                                                 <!-- Date Information Display -->
                                                 <div class="row mt-3">
                                                     <div class="col-md-6">
@@ -478,7 +493,7 @@ $total_repayment = $loan['amount'] + $loan['interest'];
                                                         <div class="card bg-light">
                                                             <div class="card-body text-center">
                                                                 <h6 class="card-title">Interest</h6>
-                                                                <h4 class="text-warning">K<span id="interest_amount"><?php echo number_format($loan['interest'], 2); ?></span></h4>
+                                                                <h4 class="text-warning">K<span id="interest_amount"><?php echo number_format($calculated_interest, 2); ?></span></h4>
                                                                 <small id="interest_percentage"><?php echo number_format($interest_percentage, 1); ?>%</small>
                                                             </div>
                                                         </div>
@@ -494,7 +509,7 @@ $total_repayment = $loan['amount'] + $loan['interest'];
                                                 </div>
                                                 
                                                 <!-- Hidden field for interest amount -->
-                                                <input type="hidden" name="interest_amount" id="hidden_interest_amount" value="<?php echo $loan['interest']; ?>">
+                                                <input type="hidden" name="interest_amount" id="hidden_interest_amount" value="<?php echo $calculated_interest; ?>">
                                                 
                                                 <div class="alert alert-warning mt-4">
                                                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -583,23 +598,20 @@ $total_repayment = $loan['amount'] + $loan['interest'];
             });
         }
         
-        // Interest calculation function
+        // Interest calculation function - 10% per week
         function calculateInterest() {
             const loanAmount = parseFloat(document.getElementById('loan_amount').value) || 0;
             const duration = parseInt(document.getElementById('loan_duration').value) || 0;
             
-            // Interest rates based on duration (example rates)
-            const interestRates = {
-                1: 0.10, // 10% for 1 week
-                2: 0.15, // 15% for 2 weeks
-                3: 0.20, // 20% for 3 weeks
-                4: 0.25  // 25% for 4 weeks
-            };
-            
-            const interestRate = interestRates[duration] || 0;
-            const interestAmount = loanAmount * interestRate;
+            // Fixed interest rate of 10% per week
+            const weeklyInterestRate = 0.10; // 10% per week
+            const totalInterestRate = weeklyInterestRate * duration;
+            const interestAmount = loanAmount * totalInterestRate;
             const totalRepayment = loanAmount + interestAmount;
-            const interestPercentage = interestRate * 100;
+            const interestPercentage = totalInterestRate * 100;
+            
+            // Update interest rate display
+            document.getElementById('interest_rate_display').textContent = 'Total interest rate: ' + interestPercentage.toFixed(1) + '%';
             
             // Calculate and display new end date
             if (duration > 0) {
