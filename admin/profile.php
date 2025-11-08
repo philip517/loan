@@ -46,32 +46,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_password'])) {
         $new_password = trim($_POST['new_password']);
         $confirm_password = trim($_POST['com_password']);
-        $reset_phrase = trim($_POST['reset_phrase']);
 
         if ($new_password !== '' || $confirm_password !== '') {
             // Password fields have data, so update password
             if ($new_password === $confirm_password) {
                 $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE login_details SET password=?, password_reset_phrase=? WHERE user_id=?");
+                $stmt = $pdo->prepare("UPDATE login_details SET password=? WHERE user_id=?");
                 $stmt->execute([$hashedPassword, $reset_phrase, $user_id]);
                 header("Location: profile.php");
                 exit;
             } else {
                 $password_error = "Passwords do not match!";
             }
-        } else {
-            // Only update reset phrase, password remains unchanged
-            $stmt = $pdo->prepare("UPDATE login_details SET password_reset_phrase=? WHERE user_id=?");
-            $stmt->execute([$reset_phrase, $user_id]);
-            header("Location: profile.php");
-            exit;
-        }
+        } 
     }
 }
 
 // Fetch existing user data
 $stmt = $pdo->prepare("
-    SELECT u.*, l.password_reset_phrase 
+    SELECT u.*
     FROM user_table u
     LEFT JOIN login_details l ON u.user_id = l.user_id
     WHERE u.user_id = ?
@@ -292,15 +285,7 @@ if (!$user_data) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-12">
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="reset_phrase"><strong>Password Reset Phrase</strong></label>
-                                                    <input class="form-control form-control-user" type="text" id="reset_phrase" name="reset_phrase" value="<?= htmlspecialchars($user_data['password_reset_phrase'] ?? '') ?>" required>
-                                                    <small class="form-text text-muted">This phrase will be used to reset your password if you forget it</small>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        
                                         <div class="text-center mt-4">
                                             <button class="btn btn-primary px-4" type="submit">
                                                 <i class="fas fa-key me-2"></i>Update Security Settings

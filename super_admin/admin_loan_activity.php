@@ -60,8 +60,8 @@ $loans = $loans_stmt->fetchAll(PDO::FETCH_ASSOC);
 $stats_sql = "
     SELECT 
         COUNT(*) as total_reviews,
-        SUM(CASE WHEN decision = 'approved' THEN 1 ELSE 0 END) as approved_loans,
-        SUM(CASE WHEN decision = 'rejected' THEN 1 ELSE 0 END) as rejected_loans
+        COALESCE(SUM(CASE WHEN decision = 'approved' THEN 1 ELSE 0 END), 0) as approved_loans,
+        COALESCE(SUM(CASE WHEN decision = 'rejected' THEN 1 ELSE 0 END), 0) as rejected_loans
     FROM loan_reviews 
     WHERE admin_id = ? AND decision IN ('approved', 'rejected')";
 
@@ -69,8 +69,13 @@ $stats_stmt = $pdo->prepare($stats_sql);
 $stats_stmt->execute([$admin_id]);
 $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
-$approval_rate = $stats['total_reviews'] > 0 ? 
-    round(($stats['approved_loans'] / $stats['total_reviews']) * 100, 1) : 0;
+// Ensure all stats are set to 0 if null
+$total_reviews = $stats['total_reviews'] ?? 0;
+$approved_loans = $stats['approved_loans'] ?? 0;
+$rejected_loans = $stats['rejected_loans'] ?? 0;
+
+$approval_rate = $total_reviews > 0 ? 
+    round(($approved_loans / $total_reviews) * 100, 1) : 0;
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">
@@ -107,7 +112,9 @@ $approval_rate = $stats['total_reviews'] > 0 ?
             transform: translateY(-2px);
         }
         .admin-header {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: #1A2980;  /* fallback for old browsers */
+            background: -webkit-linear-gradient(to right, #26D0CE, #1A2980);  /* Chrome 10-25, Safari 5.1-6 */
+            background: linear-gradient(to left, #175e5cff, #1A2980); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
             color: white;
             border-radius: 10px;
             padding: 2rem;
@@ -158,7 +165,7 @@ $approval_rate = $stats['total_reviews'] > 0 ?
                     
                     <!-- Admin Header -->
                     <div class="admin-header">
-                        <a href="admins.php" class="back-button mb-3 d-inline-block">
+                        <a href="loan_activity.php" class="back-button mb-3 d-inline-block">
                             <i class="fas fa-arrow-left me-2"></i>Back to Administrators
                         </a>
                         <h3 class="text-white mb-2">Loan Review Activity</h3>
@@ -183,7 +190,7 @@ $approval_rate = $stats['total_reviews'] > 0 ?
                                                 <span>Completed Reviews</span>
                                             </div>
                                             <div class="text-dark mb-0 fw-bold h5">
-                                                <span><?php echo $stats['total_reviews']; ?></span>
+                                                <span><?php echo $total_reviews; ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
                                                 <span>Total reviews processed</span>
@@ -207,7 +214,7 @@ $approval_rate = $stats['total_reviews'] > 0 ?
                                                 <span>Approved Loans</span>
                                             </div>
                                             <div class="text-dark mb-0 fw-bold h5">
-                                                <span><?php echo $stats['approved_loans']; ?></span>
+                                                <span><?php echo $approved_loans; ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
                                                 <span>Loans approved</span>
@@ -231,7 +238,7 @@ $approval_rate = $stats['total_reviews'] > 0 ?
                                                 <span>Rejected Loans</span>
                                             </div>
                                             <div class="text-dark mb-0 fw-bold h5">
-                                                <span><?php echo $stats['rejected_loans']; ?></span>
+                                                <span><?php echo $rejected_loans; ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
                                                 <span>Loans rejected</span>
@@ -407,7 +414,7 @@ $approval_rate = $stats['total_reviews'] > 0 ?
         </div>
         <a class="border rounded d-inline scroll-to-top" href="#page-top"><i class="fas fa-angle-up"></i></a>
     </div>
-    <script src="assets/bootstrap/css/bootstrap.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
     <script>
         // Make loan rows clickable and redirect to loan review page
