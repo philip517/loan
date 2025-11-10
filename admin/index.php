@@ -10,12 +10,12 @@ if (!$user_id) {
     exit;
 }
 
-// Fetch loan statistics for the cards
+// Fetch loan statistics for the cards - CORRECTED QUERY
 $stats_query = "
     SELECT 
         COUNT(*) as total_loans,
         SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_loans,
-        SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as approved_loans,
+        SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue_loans,
         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_loans,
         SUM(CASE WHEN status = 'pending' OR status IS NULL THEN 1 ELSE 0 END) as pending_loans
     FROM loan
@@ -67,7 +67,7 @@ $total_overdue_amount = 0;
 $total_overdue_interest = 0;
 foreach ($overdue_loans as $loan) {
     $total_overdue_amount += $loan['amount'];
-    $total_overdue_interest += $loan['interest']+$loan['penalty_fee'];
+    $total_overdue_interest += $loan['interest'] + $loan['penalty_fee'];
 }
 
 $total_current_amount = 0;
@@ -155,8 +155,10 @@ foreach ($current_loans as $loan) {
         <div class="d-flex flex-column" id="content-wrapper">
             <div id="content" style="background: rgba(255,255,255,0.09);">
                 <div class="container-fluid" style="margin-top: 80px;">
-                    <br><br>                            <h3 class="text-dark mb-0"><strong>LOANS SUMMARY</strong></h3>
-<br>
+                    <br><br>
+                    <h3 class="text-dark mb-0"><strong>LOANS SUMMARY</strong></h3>
+                    <br>
+
                     <!-- Row 1: Loan Statistics Cards -->
                     <div class="row mb-4">
                         <!-- Total Loans Card -->
@@ -255,8 +257,11 @@ foreach ($current_loans as $loan) {
                             </div>
                         </div>
                     </div>
-              <br><br>                            <h3 class="text-dark mb-0"><strong>QUICK ACTIONS</strong></h3>
-<br>
+
+                    <br><br>
+                    <h3 class="text-dark mb-0"><strong>QUICK ACTIONS</strong></h3>
+                    <br>
+
                     <!-- Row 2: Quick Action Cards -->
                     <div class="row mb-4">
                         <div class="col-md-3 mb-3">
@@ -337,7 +342,6 @@ foreach ($current_loans as $loan) {
                         </div>
 
                         <!-- Overdue Loans Card -->
-                           
                         <div class="col-md-6 col-xl-3 mb-4">
                             <div class="card shadow border-left-danger loan-card">
                                 <div class="card-body">
@@ -411,12 +415,11 @@ foreach ($current_loans as $loan) {
                     </div>
 
                     <!-- Overdue Loans Section -->
-                     
                     <div class="row">
                         <div class="alert alert-warning mb-4">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Penalty Notice:</strong> Overdue loans incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
-                                        </div>
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Penalty Notice:</strong> Overdue loans incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
+                        </div>
                         <div class="col-12">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3 bg-danger text-white d-flex justify-content-between align-items-center">
@@ -476,8 +479,6 @@ foreach ($current_loans as $loan) {
                                                             <td>
                                                                 K<?php echo number_format($loan['interest'], 2); ?><br>
                                                                 +K<strong><?php echo number_format($loan['penalty_fee'], 2); ?></strong>
-
-                                                                
                                                             </td>
                                                             <td>
                                                                 <strong class="text-danger">K<?php echo number_format($total_due, 2); ?></strong>

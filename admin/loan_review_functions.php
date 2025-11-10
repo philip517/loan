@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_request'])) {
     }
 }
 
+
 // Handle message submission to user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     try {
@@ -79,6 +80,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
         $_SESSION['error_message'] = "Failed to send message. Please try again.";
     }
 }
+
+// Handle loan status update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    try {
+        $new_status = $_POST['status'];
+        $admin_notes = $_POST['admin_notes'] ?? '';
+        $admin_id = $_SESSION['user_id'] ?? null;
+        
+        if (!$admin_id) {
+            throw new Exception("Admin ID not found in session. Please log in again.");
+        }
+        
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        // 1. First, fetch the current loan data to get duration and other details
+        $current_loan_sql = "SELECT duration, loan_number FROM loan WHERE loan_id = ?";
+        $current_loan_stmt = $pdo->prepare($current_loan_sql);
+        $current_loan_stmt->execute([$loan_id]);
+        $current_loan = $current_loan_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$current_loan) {
+            throw new Exception("Loan not found.");
+        }
+        
+        // 2. Update the loan status in the loans table
+        $update_sql = "UPDATE loan SET status = ?";
+        $update_params = [$new_status];
+        
+        // 3. If approved, set the loan start and end dates AND update progress to 'current'
+        if ($new_status === 'approved') {
+            $start_date = date('Y-m-d');
+            $end_date = date('Y-m-d', strtotime("+{$current_loan['duration']} weeks"));
+            
+            $update_sql .= ", loan_start_date = ?, loan_end_date = ?, progress = 'current'";
+            array_push($update_params, $start_date, $end_date);
+            
+            error_log("Setting loan dates - Start: $start_date, End: $end_date, Progress: current, Duration: {$current_loan['duration']} weeks");
+        } else if ($new_status === 'rejected') {
+            // If rejected, you might want to set progress to something else or leave it as is
+            $update_sql .= ", progress = 'rejected'";
+        }
+        
+        $update_sql .= " WHERE loan_id = ?";
+        array_push($update_params, $loan_id);
+        
+        $update_stmt = $pdo->prepare($update_sql);
+        $update_result = $update_stmt->execute($update_params);
+        
+        if (!$update_result) {
+            throw new Exception("Failed to update loan status in loan table.");
+        }
+        
+        // 4. Record the review decision
+        $loan_number = $current_loan['loan_number'] ?? 'N/A';
+        $review_id = recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, $new_status, $admin_notes);
+        
+        if (!$review_id) {
+            throw new Exception("Failed to record loan review decision.");
+        }
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        $_SESSION['success_message'] = "Loan status updated successfully to: " . strtoupper($new_status);
+        if ($new_status === 'approved') {
+            $_SESSION['success_message'] .= ". Loan has been activated and marked as CURRENT.";
+        }
+        header("Location: loan_review.php?loan_id=" . $loan_id);
+        exit;
+        
+    } catch (Exception $e) {
+        // Rollback transaction on error
+        $pdo->rollBack();
+        $_SESSION['error_message'] = "Failed to update loan status. Please try again. Error: " . $e->getMessage();
+        error_log("Error updating loan status: " . $e->getMessage());
+        header("Location: loan_review.php?loan_id=" . $loan_id);
+        exit;
+    }
+}
+
+
+
 
 // Fetch specific loan details with user and kin information
 try {

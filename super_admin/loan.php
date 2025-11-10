@@ -14,12 +14,13 @@ try {
     $pending_stmt->execute();
     $pending_loans = $pending_stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Approved loans
+    // Approved loans - only those with progress = 'current'
     $approved_stmt = $pdo->prepare("
         SELECT l.*, u.first_name, u.last_name, u.occupation 
         FROM loan l 
         JOIN user_table u ON l.user_id = u.user_id 
-        WHERE l.status = 'approved'
+        WHERE l.status = 'approved' 
+        AND l.progress = 'current'
     ");
     $approved_stmt->execute();
     $approved_loans = $approved_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -34,23 +35,25 @@ try {
     $rejected_stmt->execute();
     $rejected_loans = $rejected_stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Paid loans
+    // Paid loans - loans with progress = 'paid'
     $paid_stmt = $pdo->prepare("
         SELECT l.*, u.first_name, u.last_name, u.occupation 
         FROM loan l 
         JOIN user_table u ON l.user_id = u.user_id 
-        WHERE l.status = 'paid'
+        WHERE l.status = 'approved' 
+        AND l.progress = 'paid'
     ");
     $paid_stmt->execute();
     $paid_loans = $paid_stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Overdue loans - loans with status 'overdue'
+    // Overdue loans - approved loans with progress = 'overdue'
     $overdue_stmt = $pdo->prepare("
         SELECT l.*, u.first_name, u.last_name, u.occupation,
                DATEDIFF(CURDATE(), l.loan_end_date) as days_overdue
         FROM loan l 
         JOIN user_table u ON l.user_id = u.user_id 
-        WHERE l.status = 'overdue'
+        WHERE l.status = 'approved' 
+        AND l.progress = 'overdue'
     ");
     $overdue_stmt->execute();
     $overdue_loans = $overdue_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -84,15 +87,9 @@ function displayLoans($loans, $tableId) {
         // Format date for better display
         $formatted_date = $loan_date !== 'N/A' ? date('M j, Y', strtotime($loan_date)) : 'N/A';
         
-        // Add overdue days for overdue loans
-        $overdue_days = '';
-        if (isset($loan['days_overdue']) && $loan['days_overdue'] > 0) {
-            $overdue_days = '<br><small class="text-danger">' . $loan['days_overdue'] . ' days overdue</small>';
-        }
-        
         echo "
         <tr class='clickable-row' data-loan-id='$loan_id'>
-            <td><strong>$loan_number</strong>$overdue_days</td>
+            <td><strong>$loan_number</strong></td>
             <td>$full_name</td>
             <td>$occupation</td>
             <td>$collateral</td>
@@ -177,7 +174,7 @@ function displayLoans($loans, $tableId) {
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab" aria-controls="approved" aria-selected="false">
-                                Approved Loans 
+                                Current Loans 
                                 <span class="badge bg-success ms-1"><?php echo count($approved_loans); ?></span>
                             </button>
                         </li>
@@ -251,19 +248,23 @@ function displayLoans($loans, $tableId) {
                             </div>
                         </div>
 
-                        <!-- Approved Loans Tab -->
+                        <!-- Approved Loans Tab (Current Loans) -->
                         <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
                             <div class="card shadow mt-3">
                                 <div class="card-header py-3">
-                                    <p class="text-primary m-0 fw-bold">Approved Loans</p>
+                                    <p class="text-primary m-0 fw-bold">Current Loans (Active & On-time)</p>
                                 </div>
                                 <div class="card-body">
+                                    <div class="alert alert-success mb-4">
+                                        <i class="fas fa-clock me-2"></i>
+                                        <strong>Active Loans:</strong> These approved loans are currently active and up-to-date with payments.
+                                    </div>
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
                                             <div class="text-md-end dataTables_filter">
                                                 <input type="search" class="form-control form-control-sm approved-search" 
                                                        aria-controls="approvedTable" 
-                                                       placeholder="Search approved loans..." 
+                                                       placeholder="Search current loans..." 
                                                        style="text-align: center;">
                                                 <label class="form-label"></label>
                                             </div>
@@ -279,7 +280,7 @@ function displayLoans($loans, $tableId) {
                                                     <th>Collateral</th>
                                                     <th>Duration</th>
                                                     <th>Loan Amount</th>
-                                                    <th>Approval Date</th>
+                                                    <th>Start Date</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -290,7 +291,7 @@ function displayLoans($loans, $tableId) {
                                     <div class="row mt-3">
                                         <div class="col-md-6 align-self-center">
                                             <p class="dataTables_info" role="status" aria-live="polite">
-                                                Showing <?php echo count($approved_loans); ?> approved loan(s)
+                                                Showing <?php echo count($approved_loans); ?> current loan(s)
                                             </p>
                                         </div>
                                     </div>
@@ -307,7 +308,7 @@ function displayLoans($loans, $tableId) {
                                 <div class="card-body">
                                     <div class="alert alert-warning mb-4">
                                         <i class="fas fa-exclamation-triangle me-2"></i>
-                                        <strong>Attention:</strong> These loans are marked as overdue and incur K15 daily penalties.
+                                        <strong>Attention:</strong> These approved loans are overdue and incur K15 daily penalties.
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
@@ -340,7 +341,7 @@ function displayLoans($loans, $tableId) {
                                                             <td colspan="7" class="empty-state">
                                                                 <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
                                                                 <h4 class="text-success">No Overdue Loans!</h4>
-                                                                <p class="text-muted">All loans are currently up to date with their payments.</p>
+                                                                <p class="text-muted">All approved loans are currently up to date with their payments.</p>
                                                             </td>
                                                           </tr>';
                                                 } else {
@@ -398,7 +399,7 @@ function displayLoans($loans, $tableId) {
                                 <div class="card-body">
                                     <div class="alert alert-success mb-4">
                                         <i class="fas fa-check-circle me-2"></i>
-                                        <strong>Completed:</strong> These loans have been fully paid and completed successfully.
+                                        <strong>Completed:</strong> These approved loans have been fully paid and completed successfully.
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
@@ -421,7 +422,7 @@ function displayLoans($loans, $tableId) {
                                                     <th>Collateral</th>
                                                     <th>Duration</th>
                                                     <th>Loan Amount</th>
-                                                    <th>Payment Date</th>
+                                                    <th>Completion Date</th>
                                                 </tr>
                                             </thead>
                                             <tbody>

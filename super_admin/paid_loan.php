@@ -26,7 +26,7 @@ function calculateOverduePenalty($days_overdue, $loan_amount, $original_interest
     ];
 }
 
-// Fetch all paid loans with overdue calculation
+// Fetch all loans with progress = 'paid'
 $paid_loans_query = "
     SELECT 
         l.loan_id,
@@ -36,6 +36,7 @@ $paid_loans_query = "
         l.loan_start_date,
         l.loan_end_date,
         l.status,
+        l.progress,
         l.payment_date,
         u.first_name,
         u.last_name,
@@ -49,7 +50,7 @@ $paid_loans_query = "
         END as payment_status
     FROM loan l 
     JOIN user_table u ON l.user_id = u.user_id 
-    WHERE l.status = 'paid'
+    WHERE l.progress = 'paid'
     ORDER BY l.payment_date DESC
 ";
 
@@ -183,7 +184,7 @@ unset($loan); // Break the reference
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h3 class="text-dark mb-0"><strong>PAID LOANS OVERVIEW</strong></h3>
-                            <p class="text-muted mb-0">View all successfully paid loans with penalty calculations</p>
+                            <p class="text-muted mb-0">View all loans with progress status as PAID</p>
                         </div>
                         <div>
                             <a href="loan.php" class="btn btn-secondary">
@@ -207,7 +208,7 @@ unset($loan); // Break the reference
                                                 <span><?php echo count($paid_loans); ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>Successfully paid loans</span>
+                                                <span>Loans with progress = paid</span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
@@ -309,12 +310,15 @@ unset($loan); // Break the reference
                                     <?php if (!empty($paid_loans)): ?>
                                         <div class="alert alert-success mb-4">
                                             <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Payment Information:</strong> Loans paid after due date incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
+                                            <strong>Payment Information:</strong> 
+                                            Showing all loans with progress status = <strong>PAID</strong>. 
+                                            Loans paid after due date incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
                                         </div>
                                         <div class="table-responsive">
                                             <table class="table table-sm table-hover" id="paidTable">
                                                 <thead>
                                                     <tr>
+                                                        <th>Progress</th>
                                                         <th>Status</th>
                                                         <th>Loan Number</th>
                                                         <th>Client Name</th>
@@ -333,6 +337,9 @@ unset($loan); // Break the reference
                                                 <tbody>
                                                     <?php foreach ($paid_loans as $loan): ?>
                                                         <tr class="<?php echo $loan['payment_status'] === 'overdue' ? 'table-warning' : 'table-success'; ?>">
+                                                            <td>
+                                                                <span class="badge bg-success"><?php echo strtoupper($loan['progress']); ?></span>
+                                                            </td>
                                                             <td>
                                                                 <span class="status-indicator <?php echo $loan['payment_status'] === 'overdue' ? 'status-overdue-paid' : 'status-paid'; ?>"></span>
                                                                 <?php if ($loan['payment_status'] === 'overdue'): ?>
@@ -405,7 +412,7 @@ unset($loan); // Break the reference
                                                 </tbody>
                                                 <tfoot>
                                                     <tr class="table-secondary">
-                                                        <td colspan="3" class="text-end"><strong>Totals:</strong></td>
+                                                        <td colspan="4" class="text-end"><strong>Totals:</strong></td>
                                                         <td><strong><span class="currency-symbol">K</span><?php echo number_format($total_paid_amount, 2); ?></strong></td>
                                                         <td><strong><span class="currency-symbol">K</span><?php echo number_format($total_original_interest, 2); ?></strong></td>
                                                         <td class="penalty-amount"><strong>+<span class="currency-symbol">K</span><?php echo number_format($total_penalty_fees, 2); ?></strong></td>
@@ -419,8 +426,8 @@ unset($loan); // Break the reference
                                     <?php else: ?>
                                         <div class="text-center py-5">
                                             <i class="fas fa-money-bill-wave fa-4x text-secondary mb-3"></i>
-                                            <h4 class="text-secondary">No Paid Loans Yet!</h4>
-                                            <p class="text-muted">There are no loans that have been fully paid yet.</p>
+                                            <h4 class="text-secondary">No Paid Loans Found!</h4>
+                                            <p class="text-muted">There are no loans with progress status as 'paid' in the system.</p>
                                             <a href="loan.php" class="btn btn-primary mt-2">
                                                 <i class="fas fa-eye me-2"></i>View All Loans
                                             </a>

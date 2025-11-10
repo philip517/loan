@@ -25,8 +25,8 @@ function calculateOverduePenalty($days_overdue, $loan_amount, $original_interest
     ];
 }
 
-// Fetch all approved loans with overdue status first
-$approved_loans_query = "
+// Fetch overdue loans (status = 'approved' AND progress = 'overdue')
+$overdue_loans_query = "
     SELECT 
         l.loan_id,
         l.loan_number,
@@ -36,35 +36,52 @@ $approved_loans_query = "
         l.loan_start_date,
         l.loan_end_date,
         l.status,
+        l.progress,
         l.payment_date,
         u.first_name,
         u.last_name,
         u.phone,
         u.email,
-        DATEDIFF(CURDATE(), l.loan_end_date) as days_overdue,
-        CASE 
-            WHEN l.loan_end_date < CURDATE() THEN 'overdue'
-            ELSE 'current'
-        END as loan_status
+        DATEDIFF(CURDATE(), l.loan_end_date) as days_overdue
     FROM loan l 
     JOIN user_table u ON l.user_id = u.user_id 
-    WHERE l.status IN ('approved', 'overdue')
+    WHERE l.status = 'approved' 
+    AND l.progress = 'overdue'
     ORDER BY l.loan_end_date ASC
 ";
 
-$approved_loans_stmt = $pdo->query($approved_loans_query);
-$all_approved_loans = $approved_loans_stmt->fetchAll(PDO::FETCH_ASSOC);
+$overdue_loans_stmt = $pdo->query($overdue_loans_query);
+$overdue_loans = $overdue_loans_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Separate overdue and current loans
-$overdue_loans = array_filter($all_approved_loans, function($loan) {
-    return $loan['loan_status'] === 'overdue';
-});
+// Fetch current loans (status = 'approved' AND progress = 'current')
+$current_loans_query = "
+    SELECT 
+        l.loan_id,
+        l.loan_number,
+        l.amount,
+        l.interest,
+        l.penalty_fee,
+        l.loan_start_date,
+        l.loan_end_date,
+        l.status,
+        l.progress,
+        l.payment_date,
+        u.first_name,
+        u.last_name,
+        u.phone,
+        u.email,
+        DATEDIFF(l.loan_end_date, CURDATE()) as days_remaining
+    FROM loan l 
+    JOIN user_table u ON l.user_id = u.user_id 
+    WHERE l.status = 'approved' 
+    AND l.progress = 'current'
+    ORDER BY l.loan_end_date ASC
+";
 
-$current_loans = array_filter($all_approved_loans, function($loan) {
-    return $loan['loan_status'] === 'current';
-});
+$current_loans_stmt = $pdo->query($current_loans_query);
+$current_loans = $current_loans_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Calculate and update penalty fees and status for each overdue loan before displaying
+// Calculate and update penalty fees for overdue loans
 $total_overdue_amount = 0;
 $total_overdue_interest = 0;
 $total_overdue_penalty = 0;
@@ -74,23 +91,17 @@ foreach ($overdue_loans as &$loan) {
     // Calculate penalty fee: days overdue × 15
     $penalty_amount = $loan['days_overdue'] * 15;
     
-    // Update the penalty fee and status in the database for this loan
-    // Only update status to 'overdue' if it's currently 'approved'
+    // Update the penalty fee in the database for this loan
     $update_loan_query = "
         UPDATE loan 
-        SET penalty_fee = ?,
-            status = CASE 
-                WHEN status = 'approved' THEN 'overdue' 
-                ELSE status 
-            END
-        WHERE loan_id = ? AND status IN ('approved', 'overdue')
+        SET penalty_fee = ?
+        WHERE loan_id = ? AND status = 'approved' AND progress = 'overdue'
     ";
     $update_loan_stmt = $pdo->prepare($update_loan_query);
     $update_loan_stmt->execute([$penalty_amount, $loan['loan_id']]);
     
-    // Update the loan array with the new penalty fee and status
+    // Update the loan array with the new penalty fee
     $loan['penalty_fee'] = $penalty_amount;
-    $loan['status'] = 'overdue'; // Update status in the array for display
     
     // Calculate totals
     $total_interest = $loan['interest'] + $penalty_amount;
@@ -113,6 +124,11 @@ foreach ($current_loans as $loan) {
     $total_current_interest += $loan['interest'];
     $total_current_total_due += $loan['amount'] + $loan['interest'];
 }
+
+// Get total count of all approved loans
+$total_approved_query = "SELECT COUNT(*) as total FROM loan WHERE status = 'approved'";
+$total_approved_stmt = $pdo->query($total_approved_query);
+$total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 ?>
 
 <!DOCTYPE html>
@@ -174,19 +190,11 @@ foreach ($current_loans as $loan) {
             color: #dc3545;
             font-weight: bold;
         }
-        .penalty-info {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 8px 12px;
-            margin: 5px 0;
-            border-radius: 4px;
+        .clickable-row {
+            cursor: pointer;
         }
-        .stored-penalty {
-            background-color: #e7f3ff;
-            border-left: 4px solid #007bff;
-            padding: 8px 12px;
-            margin: 5px 0;
-            border-radius: 4px;
+        .clickable-row:hover {
+            background-color: rgba(0, 123, 255, 0.1) !important;
         }
     </style>
 </head>
@@ -201,14 +209,10 @@ foreach ($current_loans as $loan) {
                     <!-- Header Section -->
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
                         <div>
-                            <h3 class="text-dark mb-0"><strong>APPROVED & OVERDUE LOANS OVERVIEW</strong></h3>
-                            <p class="text-muted mb-0">Manage and monitor all active loans</p>
+                            <h3 class="text-dark mb-0"><strong>APPROVED LOANS OVERVIEW</strong></h3>
+                            <p class="text-muted mb-0">Manage and monitor all active loans by progress status</p>
                         </div>
-                        <div>
-                            <a href="loan.php" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Back to All Loans
-                            </a>
-                        </div>
+                       
                     </div>
 
                     <!-- Summary Cards -->
@@ -220,13 +224,13 @@ foreach ($current_loans as $loan) {
                                     <div class="row g-0 align-items-center">
                                         <div class="col me-2">
                                             <div class="text-uppercase text-primary mb-1 fw-bold text-xs">
-                                                <span>Total Active Loans</span>
+                                                <span>Total Approved Loans</span>
                                             </div>
                                             <div class="text-dark mb-0 fw-bold h5">
-                                                <span><?php echo count($all_approved_loans); ?></span>
+                                                <span><?php echo $total_approved; ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>All active loans</span>
+                                                <span>All approved loans</span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
@@ -250,7 +254,7 @@ foreach ($current_loans as $loan) {
                                                 <span><?php echo count($overdue_loans); ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>Total Due: <span class="currency-symbol">K</span><?php echo number_format($total_overdue_total_due, 2); ?></span>
+                                                <span>Progress: overdue</span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
@@ -274,7 +278,7 @@ foreach ($current_loans as $loan) {
                                                 <span><?php echo count($current_loans); ?></span>
                                             </div>
                                             <div class="text-xs text-muted">
-                                                <span>Total Due: <span class="currency-symbol">K</span><?php echo number_format($total_current_total_due, 2); ?></span>
+                                                <span>Progress: current</span>
                                             </div>
                                         </div>
                                         <div class="col-auto">
@@ -328,13 +332,13 @@ foreach ($current_loans as $loan) {
                                         
                                         <div class="alert alert-warning mb-4">
                                             <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Penalty Notice:</strong> Overdue loans incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
+                                            <strong>Penalty Notice:</strong> Overdue loans (progress = 'overdue') incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
                                         </div>
                                         <div class="table-responsive">
                                             <table class="table table-sm table-hover" id="overdueTable">
                                                 <thead>
                                                     <tr>
-                                                        <th>Status</th>
+                                                        <th>Progress</th>
                                                         <th>Days Overdue</th>
                                                         <th>Loan Number</th>
                                                         <th>Client Name</th>
@@ -354,7 +358,7 @@ foreach ($current_loans as $loan) {
                                                         $total_interest = $loan['interest'] + $penalty_amount;
                                                         $total_due = $loan['amount'] + $total_interest;
                                                         ?>
-                                                        <tr class="<?php echo $loan['days_overdue'] > 30 ? 'table-danger' : 'table-warning'; ?>">
+                                                        <tr class="clickable-row <?php echo $loan['days_overdue'] > 30 ? 'table-danger' : 'table-warning'; ?>" data-loan-id="<?php echo $loan['loan_id']; ?>">
                                                             <td>
                                                                 <span class="status-indicator status-overdue"></span>
                                                                 <span class="overdue-badge">OVERDUE</span>
@@ -382,7 +386,6 @@ foreach ($current_loans as $loan) {
                                                                 +<span class="currency-symbol">K</span><?php echo number_format($penalty_amount, 2); ?>
                                                                 <br>
                                                                 <small class="text-muted">(K15 × <?php echo $loan['days_overdue']; ?> days)</small>
-                                                                <br>
                                                             </td>
                                                             <td>
                                                                 <strong><span class="currency-symbol">K</span><?php echo number_format($total_interest, 2); ?></strong>
@@ -427,7 +430,7 @@ foreach ($current_loans as $loan) {
                                         <div class="text-center py-5">
                                             <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
                                             <h4 class="text-success">No Overdue Loans!</h4>
-                                            <p class="text-muted">All approved loans are currently up to date with their payments.</p>
+                                            <p class="text-muted">There are no loans with progress status 'overdue'.</p>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -450,11 +453,15 @@ foreach ($current_loans as $loan) {
                                 </div>
                                 <div class="card-body">
                                     <?php if (!empty($current_loans)): ?>
+                                        <div class="alert alert-info mb-4">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Current Loans:</strong> These loans have progress status 'current' and are active with upcoming due dates.
+                                        </div>
                                         <div class="table-responsive">
                                             <table class="table table-sm table-hover" id="currentTable">
                                                 <thead>
                                                     <tr>
-                                                        <th>Status</th>
+                                                        <th>Progress</th>
                                                         <th>Days Remaining</th>
                                                         <th>Loan Number</th>
                                                         <th>Client Name</th>
@@ -470,9 +477,9 @@ foreach ($current_loans as $loan) {
                                                     <?php foreach ($current_loans as $loan): ?>
                                                         <?php
                                                         $total_due = $loan['amount'] + $loan['interest'];
-                                                        $days_remaining = -$loan['days_overdue']; // Negative days_overdue means days remaining
+                                                        $days_remaining = $loan['days_remaining'];
                                                         ?>
-                                                        <tr>
+                                                        <tr class="clickable-row" data-loan-id="<?php echo $loan['loan_id']; ?>">
                                                             <td>
                                                                 <span class="status-indicator status-current"></span>
                                                                 <span class="current-badge">CURRENT</span>
@@ -532,7 +539,7 @@ foreach ($current_loans as $loan) {
                                         <div class="text-center py-5">
                                             <i class="fas fa-info-circle fa-4x text-info mb-3"></i>
                                             <h4 class="text-info">No Current Loans</h4>
-                                            <p class="text-muted">There are no approved loans that are currently active.</p>
+                                            <p class="text-muted">There are no loans with progress status 'current'.</p>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -564,12 +571,15 @@ foreach ($current_loans as $loan) {
             console.log('Approved Loans page loaded');
             
             // Add row click functionality
-            const tableRows = document.querySelectorAll('tbody tr');
-            tableRows.forEach(row => {
-                row.addEventListener('click', function() {
-                    const loanId = this.querySelector('a.btn-primary')?.getAttribute('href')?.split('loan_id=')[1];
-                    if (loanId) {
-                        window.location.href = `loan_review.php?loan_id=${loanId}`;
+            const clickableRows = document.querySelectorAll('.clickable-row');
+            clickableRows.forEach(row => {
+                row.addEventListener('click', function(e) {
+                    // Don't trigger if user clicked on buttons
+                    if (!e.target.closest('a, button')) {
+                        const loanId = this.getAttribute('data-loan-id');
+                        if (loanId) {
+                            window.location.href = `loan_review.php?loan_id=${loanId}`;
+                        }
                     }
                 });
             });

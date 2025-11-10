@@ -45,7 +45,7 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $topic = $_POST['topic'] ?? '';
     $message_text = $_POST['message'] ?? '';
-    $type = $_POST['type'] ?? 'admin_to_user';
+    $type = 'admin_to_user'; // Always set to admin_to_user
     $loan_id = $_POST['loan_id'] ?? null;
     
     if (!empty($topic) && !empty($message_text)) {
@@ -340,12 +340,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <form method="post">
                             <div class="modal-body">
-                                <div class="mb-3">
-                                    <label for="type" class="form-label">Message Type</label>
-                                    <select class="form-select" id="type" name="type" required>
-                                        <option value="admin_to_user">Admin to User</option>
-                                        <option value="user_to_admin">User to Admin</option>
-                                    </select>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> All messages sent from this page will be recorded as "Admin to User" type.
                                 </div>
                                 <div class="mb-3">
                                     <label for="topic" class="form-label">Topic</label>

@@ -40,6 +40,8 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                 <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="loan_request.php"><i class="fas fa-envelope"></i><span>Loan Request</span></a></li>
                 <li class="nav-item"><a class="nav-link active" href="profile.php"><i class="fas fa-user-circle"></i><span>Profile</span></a></li>
+                <li class="nav-item"><a class="nav-link active" href="notifications.php"><i class="fas fa-user-circle"></i><span>Notifications</span></a></li>
+
 
             </ul>
         </div>

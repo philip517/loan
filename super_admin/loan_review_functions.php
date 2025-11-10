@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         }
 
         // Fetch loan details including loan number, current status, and duration
-        $loan_sql = "SELECT loan_number, status, duration FROM loan WHERE loan_id = ?";
+        $loan_sql = "SELECT loan_number, status, duration, progress FROM loan WHERE loan_id = ?";
         $loan_stmt = $pdo->prepare($loan_sql);
         $loan_stmt->execute([$loan_id]);
         $loan_data = $loan_stmt->fetch(PDO::FETCH_ASSOC);
@@ -62,9 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         $loan_number = $loan_data['loan_number'] ?? null;
         $current_status = $loan_data['status'] ?? 'pending';
         $loan_duration = $loan_data['duration'] ?? 0;
+        $current_progress = $loan_data['progress'] ?? null;
 
         // Debug: Check current values
-        error_log("Loan Number: " . ($loan_number ?? 'NULL') . ", Current Status: $current_status, New Status: $new_status, Duration: $loan_duration weeks");
+        error_log("Loan Number: " . ($loan_number ?? 'NULL') . ", Current Status: $current_status, New Status: $new_status, Duration: $loan_duration weeks, Current Progress: " . ($current_progress ?? 'NULL'));
 
         if (!$loan_number) {
             throw new Exception("Loan number not found for this loan");
@@ -72,26 +73,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 
         // Prepare update SQL based on status
         if ($new_status === 'approved' && $current_status !== 'approved') {
-            // Calculate dates for approved loan
+            // Calculate dates for approved loan and set progress to 'current'
             $start_date = date('Y-m-d'); // Current date as start date
             $end_date = date('Y-m-d', strtotime("+$loan_duration weeks")); // Add weeks to start date
             
             error_log("Setting loan dates - Start: $start_date, End: $end_date (Duration: $loan_duration weeks)");
             
-            // Update loan status AND dates
-            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = ? WHERE loan_id = ?";
+            // Update loan status, dates, and progress
+            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = ?, progress = 'current' WHERE loan_id = ?";
             $update_stmt = $pdo->prepare($update_sql);
             $update_stmt->execute([$new_status, $start_date, $end_date, $loan_id]);
             
-            $_SESSION['success_message'] = "Loan approved successfully! Start date set to today and end date calculated based on " . $loan_duration . " week(s) duration.";
+            $_SESSION['success_message'] = "Loan approved successfully! Start date set to today and end date calculated based on " . $loan_duration . " week(s) duration. Progress set to 'current'.";
+            
+        } elseif ($new_status === 'pending' && $current_status !== 'pending') {
+            // Set start date to current date and progress to NULL when status changes to pending
+            $start_date = date('Y-m-d'); // Current date as start date
+            
+            error_log("Setting loan start date for pending status - Start: $start_date, Progress: NULL");
+            
+            // Update loan status, start date, and set progress to NULL
+            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = NULL, progress = NULL WHERE loan_id = ?";
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->execute([$new_status, $start_date, $loan_id]);
+            
+            $_SESSION['success_message'] = "Loan status set to Pending! Start date updated to today and progress reset.";
             
         } else {
-            // For other status changes (rejected, pending), only update status
-            $update_sql = "UPDATE loan SET status = ? WHERE loan_id = ?";
-            $update_stmt = $pdo->prepare($update_sql);
-            $update_stmt->execute([$new_status, $loan_id]);
-            
-            $_SESSION['success_message'] = "Loan status updated to " . ucfirst($new_status) . " successfully!";
+            // For other status changes (rejected), update status and clear dates and progress
+            if ($new_status === 'rejected') {
+                // Clear dates and progress when rejecting a loan
+                $update_sql = "UPDATE loan SET status = ?, loan_start_date = NULL, loan_end_date = NULL, progress = NULL WHERE loan_id = ?";
+                $update_stmt = $pdo->prepare($update_sql);
+                $update_stmt->execute([$new_status, $loan_id]);
+                
+                $_SESSION['success_message'] = "Loan rejected successfully! Loan dates cleared and progress reset.";
+            } else {
+                // For status changes that don't require date updates, only update status
+                $update_sql = "UPDATE loan SET status = ? WHERE loan_id = ?";
+                $update_stmt = $pdo->prepare($update_sql);
+                $update_stmt->execute([$new_status, $loan_id]);
+                
+                $_SESSION['success_message'] = "Loan status updated to " . ucfirst($new_status) . " successfully!";
+            }
         }
         
         // Record in loan_reviews table if status changed (including pending)
@@ -117,6 +141,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     } catch (Exception $e) {
         $_SESSION['error_message'] = "Failed to update loan status. Please try again. Error: " . $e->getMessage();
         error_log("Error in status update: " . $e->getMessage());
+    }
+}
+
+// Handle mark as paid action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_as_paid'])) {
+    try {
+        $admin_id = $_SESSION['user_id'] ?? null;
+        
+        if (!$admin_id) {
+            throw new Exception("Admin ID not found in session. Please log in again.");
+        }
+
+        // Check if loan is approved
+        $loan_check_sql = "SELECT loan_number, status FROM loan WHERE loan_id = ? AND status = 'approved'";
+        $loan_check_stmt = $pdo->prepare($loan_check_sql);
+        $loan_check_stmt->execute([$loan_id]);
+        $loan_data = $loan_check_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$loan_data) {
+            throw new Exception("Loan not found or not approved. Only approved loans can be marked as paid.");
+        }
+        
+        $loan_number = $loan_data['loan_number'];
+        
+        // Update loan progress to 'paid' and set payment date
+        $payment_date = date('Y-m-d'); // Current date as payment date
+        
+        $update_sql = "UPDATE loan SET progress = 'paid', payment_date = ? WHERE loan_id = ? AND status = 'approved'";
+        $update_stmt = $pdo->prepare($update_sql);
+        $update_result = $update_stmt->execute([$payment_date, $loan_id]);
+        
+        if (!$update_result) {
+            throw new Exception("Failed to update loan progress to paid.");
+        }
+        
+        // Record this action in loan_reviews table
+        $review_id = recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, 'marked_paid', 'Loan marked as paid on ' . $payment_date);
+        
+        if ($review_id) {
+            $_SESSION['success_message'] = "Loan marked as paid successfully! Payment date set to " . date('F j, Y', strtotime($payment_date)) . ". Review recorded in audit trail.";
+            error_log("Loan marked as paid successfully with review ID: " . $review_id);
+        } else {
+            $_SESSION['success_message'] = "Loan marked as paid successfully! Payment date set to " . date('F j, Y', strtotime($payment_date)) . ".";
+            $_SESSION['warning_message'] = "Loan marked as paid but review recording failed. Please check error logs.";
+            error_log("Loan marked as paid but review recording failed");
+        }
+        
+        header("Location: loan_review.php?loan_id=" . $loan_id);
+        exit;
+        
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = "Failed to mark loan as paid. Please try again. Error: " . $e->getMessage();
+        error_log("Error marking loan as paid: " . $e->getMessage());
     }
 }
 
@@ -263,6 +340,7 @@ function displayLoanDetails($loan, $pdo) {
             'approved' => '<span class="badge bg-success">Approved</span>',
             'rejected' => '<span class="badge bg-danger">Rejected</span>',
             'pending' => '<span class="badge bg-warning">Pending</span>',
+            'marked_paid' => '<span class="badge bg-info">Marked Paid</span>',
             default => '<span class="badge bg-secondary">' . $review_info['decision'] . '</span>'
         };
         
@@ -342,6 +420,7 @@ function displayLoanDetails($loan, $pdo) {
                 'approved' => '<span class="badge bg-success">Approved</span>',
                 'rejected' => '<span class="badge bg-danger">Rejected</span>',
                 'pending' => '<span class="badge bg-warning">Pending</span>',
+                'marked_paid' => '<span class="badge bg-info">Marked Paid</span>',
                 default => '<span class="badge bg-secondary">' . $review['decision'] . '</span>'
             };
             
@@ -386,7 +465,7 @@ function displayLoanDetails($loan, $pdo) {
     
     // Overdue alert section
     $overdue_alert = '';
-    if ($is_overdue && $loan['status'] === 'overdue') {
+    if ($is_overdue && $loan['status'] === 'approved') {
         $overdue_alert = '
         <div class="row">
             <div class="col-12">
@@ -422,6 +501,20 @@ function displayLoanDetails($loan, $pdo) {
         </div>';
     }
     
+    // Show paid status info if loan is already paid
+    $paid_info = '';
+    if ($loan['progress'] === 'paid') {
+        $payment_date = $loan['payment_date'] ?? 'Unknown';
+        $paid_info = '
+        <div class="alert alert-success mb-4">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Loan Paid:</strong> This loan has been marked as paid on ' . date('F j, Y', strtotime($payment_date)) . '.
+        </div>';
+    }
+    
+    // Determine if mark as paid button should be shown
+    $show_mark_paid = ($loan['status'] === 'approved' && $loan['progress'] !== 'paid');
+    
     return '
     <div class="card shadow-lg border-0 mb-4">
         <div class="card-header bg-white py-3">
@@ -437,6 +530,7 @@ function displayLoanDetails($loan, $pdo) {
                 </div>
                 <div class="col-auto">
                     ' . ($is_overdue && $loan['status'] === 'approved' ? '<span class="badge bg-danger fs-6 me-2">OVERDUE</span>' : '') . '
+                    ' . ($loan['progress'] === 'paid' ? '<span class="badge bg-info fs-6 me-2">PAID</span>' : '') . '
                     <span class="badge bg-' . $status_color . ' fs-6">' . strtoupper($loan['status'] ?? 'PENDING') . '</span>
                 </div>
             </div>
@@ -445,6 +539,7 @@ function displayLoanDetails($loan, $pdo) {
         <div class="card-body" style="background: ' . $status_bg . ';">
             ' . $date_calculation_info . '
             ' . $overdue_alert . '
+            ' . $paid_info . '
             ' . $review_section . '
             ' . $past_reviews_section . '
             
@@ -497,6 +592,7 @@ function displayLoanDetails($loan, $pdo) {
                             <p><strong>End Date:</strong> ' . ($loan['loan_end_date'] ?? 'Not set') . ' 
                                 ' . ($is_overdue && $loan['status'] === 'approved' ? '<span class="badge bg-danger ms-2">OVERDUE</span>' : '') . '
                             </p>
+                            ' . ($loan['payment_date'] ? '<p><strong>Payment Date:</strong> ' . date('F j, Y', strtotime($loan['payment_date'])) . '</p>' : '') . '
                             ' . ($is_overdue && $loan['status'] === 'approved' ? '
                             <div class="alert alert-warning mt-2 p-2">
                                 <small>
@@ -589,6 +685,40 @@ function displayLoanDetails($loan, $pdo) {
                     </div>
                 </div>
             </div>
+            
+            ' . ($show_mark_paid ? '
+            <!-- Mark as Paid Action -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Mark Loan as Paid</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Mark as Paid:</strong> Use this action to mark this approved loan as fully paid. This will:
+                                <ul class="mb-0 mt-2">
+                                    <li>Set the progress status to "paid"</li>
+                                    <li>Record today\'s date as the payment date</li>
+                                    <li>Create an audit trail entry</li>
+                                    <li>Move the loan to the "Paid Loans" section</li>
+                                </ul>
+                            </div>
+                            <form method="POST" action="">
+                                <div class="text-center">
+                                    <button type="submit" name="mark_as_paid" class="btn btn-success btn-lg" onclick="return confirm(\'Are you sure you want to mark this loan as paid? This action cannot be undone.\')">
+                                        <i class="fas fa-check-circle me-2"></i>Mark Loan as Paid
+                                    </button>
+                                    <p class="text-muted mt-2 mb-0">
+                                        <small>Current date will be recorded: ' . date('F j, Y') . '</small>
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>' : '') . '
         </div>
     </div>';
 }

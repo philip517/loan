@@ -319,6 +319,15 @@ $unread_count = $notification_data['unread_count'] ?? 0;
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="notifications.php">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="1.5em" viewBox="0 0 24 24" width="1.5em" fill="currentColor">
+                                <path d="M0 0h24v24H0z" fill="none"></path>
+                                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"></path>
+                            </svg>
+                            <span>Notifications</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="loan.php">
                             <svg xmlns="http://www.w3.org/2000/svg" height="1.5em" viewBox="0 0 24 24" width="1.5em" fill="currentColor">
                                 <path d="M0 0h24v24H0z" fill="none"></path>
