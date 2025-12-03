@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
+       <style>
         .loan-card {
             transition: all 0.3s ease;
             cursor: pointer;
@@ -106,15 +106,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .general-messages-card {
             border-left: 4px solid #6c757d;
         }
+        
+        /* Fixed layout styles */
+        body {
+            overflow-x: hidden;
+        }
+        
+        #wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar styles - FIXED */
+        .sidebar {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px !important;
+            overflow-y: auto;
+            z-index: 1030;
+        }
+        
+        /* Content wrapper - this wraps both topbar and main content */
+        #content-wrapper {
+            flex: 1;
+            margin-left: 250px !important;
+            width: calc(100% - 250px) !important;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Top navbar - FIXED */
+        .topbar {
+            position: fixed !important;
+            top: 0;
+            left: 250px !important;
+            right: 0;
+            z-index: 1020;
+            height: 70px;
+            width: calc(100% - 250px) !important;
+        }
+        
+        /* Main content area */
+        #content {
+            margin-top: 70px; /* Space for fixed topbar */
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.09);
+            opacity: 1;
+        }
+        
+        /* Remove the inline margin-top from container-fluid */
+        .container-fluid {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Footer adjustment */
+        footer.bg-white.sticky-footer {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative !important;
+                width: 100% !important;
+                height: auto;
+            }
+            
+            #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            
+            .topbar {
+                position: relative !important;
+                left: 0 !important;
+                width: 100% !important;
+            }
+            
+            #content {
+                margin-top: 0;
+                padding: 15px;
+            }
+            
+            footer.bg-white.sticky-footer {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .loan-card {
+                margin-bottom: 10px;
+            }
+            
+            .modal-dialog {
+                margin: 10px;
+                max-width: calc(100% - 20px);
+            }
+        }
+        
+        /* Modal adjustments for fixed layout */
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+        
+        .modal {
+            z-index: 1050 !important;
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content" style="background: rgba(255,255,255,0.09);opacity: 1;">
-                <div class="container-fluid top-0 overflow-scroll" style="margin-top: 100px;">
+        <div id="content">
+            <div class="container-fluid top-0 overflow-scroll">
                     <!-- Error/Success Messages -->
                     <?php if (isset($error)): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">

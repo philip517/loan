@@ -1,6 +1,27 @@
 <?php 
 require 'auth_admin.php';
-require '../db_connect.php'; // include your PDO connection
+require '../db_connect.php';
+
+// Function to calculate totals for a set of loans
+function calculateLoanTotals($loans) {
+    $total_amount = 0;
+    $total_interest = 0;
+    $total_loans = count($loans);
+    $total_penalty = 0;
+    
+    foreach ($loans as $loan) {
+        $total_amount += $loan['amount'];
+        $total_interest += $loan['interest'] ?? 0;
+        $total_penalty += $loan['penalty_fee'] ?? 0;
+    }
+    
+    return [
+        'total_amount' => $total_amount,
+        'total_interest' => $total_interest,
+        'total_loans' => $total_loans,
+        'total_penalty' => $total_penalty
+    ];
+}
 
 // Fetch loans with user information
 try {
@@ -13,6 +34,7 @@ try {
     ");
     $pending_stmt->execute();
     $pending_loans = $pending_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $pending_totals = calculateLoanTotals($pending_loans);
     
     // Approved loans - only those with progress = 'current'
     $approved_stmt = $pdo->prepare("
@@ -24,6 +46,7 @@ try {
     ");
     $approved_stmt->execute();
     $approved_loans = $approved_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $approved_totals = calculateLoanTotals($approved_loans);
     
     // Rejected loans
     $rejected_stmt = $pdo->prepare("
@@ -34,6 +57,7 @@ try {
     ");
     $rejected_stmt->execute();
     $rejected_loans = $rejected_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rejected_totals = calculateLoanTotals($rejected_loans);
     
     // Paid loans - loans with progress = 'paid'
     $paid_stmt = $pdo->prepare("
@@ -45,6 +69,7 @@ try {
     ");
     $paid_stmt->execute();
     $paid_loans = $paid_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $paid_totals = calculateLoanTotals($paid_loans);
     
     // Overdue loans - approved loans with progress = 'overdue'
     $overdue_stmt = $pdo->prepare("
@@ -57,6 +82,7 @@ try {
     ");
     $overdue_stmt->execute();
     $overdue_loans = $overdue_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $overdue_totals = calculateLoanTotals($overdue_loans);
     
 } catch (PDOException $e) {
     die("Error fetching loans: " . $e->getMessage());
@@ -113,7 +139,7 @@ function displayLoans($loans, $tableId) {
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
     <link rel="stylesheet" href="assets/css/loan.css">
-    <style>
+       <style>
         .clickable-row {
             cursor: pointer;
             transition: background-color 0.2s ease;
@@ -153,47 +179,181 @@ function displayLoans($loans, $tableId) {
         .paid-row:hover {
             background-color: rgba(40, 167, 69, 0.1) !important;
         }
+        /* Card Styles */
+        .summary-card {
+            border-radius: 10px;
+            border: none;
+            transition: transform 0.2s ease;
+        }
+        .summary-card:hover {
+            transform: translateY(-2px);
+        }
+        .card-icon {
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6c757d;
+        }
+        .card-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+        .card-amount {
+            color: #2c3e50;
+        }
+        .card-interest {
+            color: #28a745;
+        }
+        .card-count {
+            color: #007bff;
+        }
+        .card-penalty {
+            color: #dc3545;
+        }
+        .summary-row {
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Fixed layout styles */
+        body {
+            overflow-x: hidden;
+        }
+        
+        #wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar styles - FIXED */
+        .sidebar {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px !important;
+            overflow-y: auto;
+            z-index: 1030;
+        }
+        
+        /* Content wrapper - this wraps both topbar and main content */
+        #content-wrapper {
+            flex: 1;
+            margin-left: 250px !important;
+            width: calc(100% - 250px) !important;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Top navbar - FIXED */
+        .topbar {
+            position: fixed !important;
+            top: 0;
+            left: 250px !important;
+            right: 0;
+            z-index: 1020;
+            height: 70px;
+            width: calc(100% - 250px) !important;
+        }
+        
+        /* Main content area */
+        #content {
+            margin-top: 70px; /* Space for fixed topbar */
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        /* Remove the inline margin-top from container-fluid */
+        .container-fluid {
+            opacity: 0.97;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Footer adjustment */
+        footer.bg-white.sticky-footer {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative !important;
+                width: 100% !important;
+                height: auto;
+            }
+            
+            #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            
+            .topbar {
+                position: relative !important;
+                left: 0 !important;
+                width: 100% !important;
+            }
+            
+            #content {
+                margin-top: 0;
+                padding: 15px;
+            }
+            
+            footer.bg-white.sticky-footer {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .summary-card {
+                margin-bottom: 15px;
+            }
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content">
-                <div class="container-fluid" style="margin-top: 100px;">
-                    <h3 class="text-dark mb-4">Loans Management</h3>
+        <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
                     
                     <!-- Tabs Navigation -->
                     <ul class="nav nav-tabs" id="loanTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
                                 Pending Loans 
-                                <span class="badge bg-warning ms-1"><?php echo count($pending_loans); ?></span>
+                                <span class="badge bg-warning ms-1"><?php echo $pending_totals['total_loans']; ?></span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab" aria-controls="approved" aria-selected="false">
                                 Current Loans 
-                                <span class="badge bg-success ms-1"><?php echo count($approved_loans); ?></span>
+                                <span class="badge bg-success ms-1"><?php echo $approved_totals['total_loans']; ?></span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button" role="tab" aria-controls="overdue" aria-selected="false">
                                 Overdue Loans 
-                                <span class="badge bg-danger ms-1"><?php echo count($overdue_loans); ?></span>
+                                <span class="badge bg-danger ms-1"><?php echo $overdue_totals['total_loans']; ?></span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="paid-tab" data-bs-toggle="tab" data-bs-target="#paid" type="button" role="tab" aria-controls="paid" aria-selected="false">
                                 Paid Loans 
-                                <span class="badge bg-info ms-1"><?php echo count($paid_loans); ?></span>
+                                <span class="badge bg-info ms-1"><?php echo $paid_totals['total_loans']; ?></span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="rejected-tab" data-bs-toggle="tab" data-bs-target="#rejected" type="button" role="tab" aria-controls="rejected" aria-selected="false">
                                 Rejected Loans 
-                                <span class="badge bg-secondary ms-1"><?php echo count($rejected_loans); ?></span>
+                                <span class="badge bg-secondary ms-1"><?php echo $rejected_totals['total_loans']; ?></span>
                             </button>
                         </li>
                     </ul>
@@ -208,6 +368,55 @@ function displayLoans($loans, $tableId) {
                                     <p class="text-primary m-0 fw-bold">Pending Loan Applications</p>
                                 </div>
                                 <div class="card-body">
+                                    <!-- Summary Cards for Pending Loans -->
+                                    <div class="row summary-row">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-primary shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loan Amount</div>
+                                                            <div class="card-value card-amount">K<?php echo number_format($pending_totals['total_amount'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-money-bill-wave card-icon text-primary"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-success shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Projected Interest</div>
+                                                            <div class="card-value card-interest">K<?php echo number_format($pending_totals['total_interest'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-percentage card-icon text-success"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-info shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loans</div>
+                                                            <div class="card-value card-count"><?php echo $pending_totals['total_loans']; ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-file-invoice card-icon text-info"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
                                             <div class="text-md-end dataTables_filter">
@@ -240,7 +449,7 @@ function displayLoans($loans, $tableId) {
                                     <div class="row mt-3">
                                         <div class="col-md-6 align-self-center">
                                             <p class="dataTables_info" role="status" aria-live="polite">
-                                                Showing <?php echo count($pending_loans); ?> pending loan(s)
+                                                Showing <?php echo $pending_totals['total_loans']; ?> pending loan(s)
                                             </p>
                                         </div>
                                     </div>
@@ -255,10 +464,57 @@ function displayLoans($loans, $tableId) {
                                     <p class="text-primary m-0 fw-bold">Current Loans (Active & On-time)</p>
                                 </div>
                                 <div class="card-body">
-                                    <div class="alert alert-success mb-4">
-                                        <i class="fas fa-clock me-2"></i>
-                                        <strong>Active Loans:</strong> These approved loans are currently active and up-to-date with payments.
+                                    
+                                    
+                                    <!-- Summary Cards for Current Loans -->
+                                    <div class="row summary-row">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-primary shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loan Amount</div>
+                                                            <div class="card-value card-amount">K<?php echo number_format($approved_totals['total_amount'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-money-bill-wave card-icon text-primary"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-success shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Interest</div>
+                                                            <div class="card-value card-interest">K<?php echo number_format($approved_totals['total_interest'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-percentage card-icon text-success"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-info shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loans</div>
+                                                            <div class="card-value card-count"><?php echo $approved_totals['total_loans']; ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-file-invoice card-icon text-info"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
+                                    
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
                                             <div class="text-md-end dataTables_filter">
@@ -291,7 +547,7 @@ function displayLoans($loans, $tableId) {
                                     <div class="row mt-3">
                                         <div class="col-md-6 align-self-center">
                                             <p class="dataTables_info" role="status" aria-live="polite">
-                                                Showing <?php echo count($approved_loans); ?> current loan(s)
+                                                Showing <?php echo $approved_totals['total_loans']; ?> current loan(s)
                                             </p>
                                         </div>
                                     </div>
@@ -310,6 +566,71 @@ function displayLoans($loans, $tableId) {
                                         <i class="fas fa-exclamation-triangle me-2"></i>
                                         <strong>Attention:</strong> These approved loans are overdue and incur K15 daily penalties.
                                     </div>
+                                    
+                                    <!-- Summary Cards for Overdue Loans (4 cards including penalties) -->
+                                    <div class="row summary-row">
+                                        <div class="col-md-3 mb-3">
+                                            <div class="card summary-card border-left-primary shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loan Amount</div>
+                                                            <div class="card-value card-amount">K<?php echo number_format($overdue_totals['total_amount'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-money-bill-wave card-icon text-primary"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <div class="card summary-card border-left-success shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Interest</div>
+                                                            <div class="card-value card-interest">K<?php echo number_format($overdue_totals['total_interest'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-percentage card-icon text-success"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <div class="card summary-card border-left-danger shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Penalties</div>
+                                                            <div class="card-value card-penalty">K<?php echo number_format($overdue_totals['total_penalty'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-exclamation-triangle card-icon text-danger"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <div class="card summary-card border-left-info shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loans</div>
+                                                            <div class="card-value card-count"><?php echo $overdue_totals['total_loans']; ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-file-invoice card-icon text-info"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
                                             <div class="text-md-end dataTables_filter">
@@ -382,7 +703,7 @@ function displayLoans($loans, $tableId) {
                                     <div class="row mt-3">
                                         <div class="col-md-6 align-self-center">
                                             <p class="dataTables_info" role="status" aria-live="polite">
-                                                Showing <?php echo count($overdue_loans); ?> overdue loan(s)
+                                                Showing <?php echo $overdue_totals['total_loans']; ?> overdue loan(s)
                                             </p>
                                         </div>
                                     </div>
@@ -401,6 +722,56 @@ function displayLoans($loans, $tableId) {
                                         <i class="fas fa-check-circle me-2"></i>
                                         <strong>Completed:</strong> These approved loans have been fully paid and completed successfully.
                                     </div>
+                                    
+                                    <!-- Summary Cards for Paid Loans -->
+                                    <div class="row summary-row">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-primary shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loan Amount</div>
+                                                            <div class="card-value card-amount">K<?php echo number_format($paid_totals['total_amount'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-money-bill-wave card-icon text-primary"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-success shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Interest Earned</div>
+                                                            <div class="card-value card-interest">K<?php echo number_format($paid_totals['total_interest'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-percentage card-icon text-success"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-info shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loans</div>
+                                                            <div class="card-value card-count"><?php echo $paid_totals['total_loans']; ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-file-invoice card-icon text-info"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
                                             <div class="text-md-end dataTables_filter">
@@ -467,7 +838,7 @@ function displayLoans($loans, $tableId) {
                                     <div class="row mt-3">
                                         <div class="col-md-6 align-self-center">
                                             <p class="dataTables_info" role="status" aria-live="polite">
-                                                Showing <?php echo count($paid_loans); ?> paid loan(s)
+                                                Showing <?php echo $paid_totals['total_loans']; ?> paid loan(s)
                                             </p>
                                         </div>
                                     </div>
@@ -482,6 +853,55 @@ function displayLoans($loans, $tableId) {
                                     <p class="text-primary m-0 fw-bold">Rejected Loans</p>
                                 </div>
                                 <div class="card-body">
+                                    <!-- Summary Cards for Rejected Loans -->
+                                    <div class="row summary-row">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-primary shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loan Amount</div>
+                                                            <div class="card-value card-amount">K<?php echo number_format($rejected_totals['total_amount'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-money-bill-wave card-icon text-primary"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-secondary shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Projected Interest</div>
+                                                            <div class="card-value" style="color: #6c757d;">K<?php echo number_format($rejected_totals['total_interest'], 2); ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-percentage card-icon text-secondary"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card summary-card border-left-info shadow h-100 py-2">
+                                                <div class="card-body">
+                                                    <div class="row no-gutters align-items-center">
+                                                        <div class="col mr-2">
+                                                            <div class="card-title">Total Loans</div>
+                                                            <div class="card-value card-count"><?php echo $rejected_totals['total_loans']; ?></div>
+                                                        </div>
+                                                        <div class="col-auto">
+                                                            <i class="fas fa-file-invoice card-icon text-info"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <div class="row">
                                         <div class="col-md-6 col-lg-12">
                                             <div class="text-md-end dataTables_filter">
@@ -514,7 +934,7 @@ function displayLoans($loans, $tableId) {
                                     <div class="row mt-3">
                                         <div class="col-md-6 align-self-center">
                                             <p class="dataTables_info" role="status" aria-live="polite">
-                                                Showing <?php echo count($rejected_loans); ?> rejected loan(s)
+                                                Showing <?php echo $rejected_totals['total_loans']; ?> rejected loan(s)
                                             </p>
                                         </div>
                                     </div>

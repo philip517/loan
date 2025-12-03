@@ -10,7 +10,7 @@ if (!$user_id) {
     exit;
 }
 
-// Fetch loan statistics for the cards - CORRECTED QUERY
+// Fetch loan statistics for the cards
 $stats_query = "
     SELECT 
         COUNT(*) as total_loans,
@@ -24,7 +24,7 @@ $stats_query = "
 $stats_stmt = $pdo->query($stats_query);
 $loan_stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 
-// Fetch all approved loans with overdue status
+// Fetch all approved loans with overdue status and days calculations
 $approved_loans_query = "
     SELECT 
         l.loan_id,
@@ -39,7 +39,14 @@ $approved_loans_query = "
         u.last_name,
         u.phone,
         u.email,
-        DATEDIFF(CURDATE(), l.loan_end_date) as days_overdue,
+        CASE 
+            WHEN l.loan_end_date < CURDATE() THEN DATEDIFF(CURDATE(), l.loan_end_date)
+            ELSE 0
+        END as days_overdue,
+        CASE 
+            WHEN l.loan_end_date >= CURDATE() THEN DATEDIFF(l.loan_end_date, CURDATE())
+            ELSE 0
+        END as days_remaining,
         CASE 
             WHEN l.loan_end_date < CURDATE() THEN 'overdue'
             ELSE 'current'

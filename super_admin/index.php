@@ -17,13 +17,17 @@ $budget = $budget_stmt->fetch(PDO::FETCH_ASSOC);
 
 $original_budget_amount = $budget ? $budget['amount'] : 0;
 
-// Fetch loan statistics
+// Fetch loan statistics - INCLUDING PRINCIPAL
 $loan_stats_query = "
     SELECT 
         COUNT(*) as total_loans,
         SUM(amount) as total_loan_amount,
         SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END) as total_approved_loan_amount,
-        SUM(CASE WHEN status = 'approved' THEN (interest) ELSE 0 END) as total_interest_earnings,
+        SUM(CASE WHEN status = 'approved' THEN interest ELSE 0 END) as total_interest_earnings,
+        SUM(CASE WHEN status = 'approved' THEN penalty_fee ELSE 0 END) as total_penalty_earnings,
+        SUM(CASE WHEN status = 'approved' THEN interest + penalty_fee ELSE 0 END) as total_revenue,
+        -- NEW: Total amount due (Principal + Interest + Penalties)
+        SUM(CASE WHEN status = 'approved' THEN amount + interest + penalty_fee ELSE 0 END) as total_amount_due,
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_loans,
         COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_loans,
         COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_loans
@@ -38,7 +42,16 @@ if ($current_budget_balance < 0) {
     $current_budget_balance = 0;
 }
 
-$total_earnings = $loan_stats['total_interest_earnings'];
+// Choose which calculation you want:
+// Option A: Total Revenue (Interest + Penalties only)
+$total_earnings = $loan_stats['total_revenue'] ?? 0;
+
+// Option B: Total Amount Due (Principal + Interest + Penalties)
+$total_amount_due = $loan_stats['total_amount_due'] ?? 0;
+
+$total_interest_only = $loan_stats['total_interest_earnings'] ?? 0;
+$total_penalties_only = $loan_stats['total_penalty_earnings'] ?? 0;
+$total_principal = $loan_stats['total_approved_loan_amount'] ?? 0;
 
 // Calculate loan usage percentage
 $loan_usage = 0;
@@ -179,7 +192,7 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
+        <style>
         .clickable-row {
             cursor: pointer;
             transition: background-color 0.2s ease;
@@ -229,14 +242,109 @@ $user_stats = $user_stats_stmt->fetch(PDO::FETCH_ASSOC);
             height: 300px;
             width: 100%;
         }
+        
+        /* Fixed layout styles */
+        body {
+            overflow-x: hidden;
+        }
+        
+        #wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar styles - FIXED */
+        .sidebar {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px !important; /* Force a specific width */
+            overflow-y: auto;
+            z-index: 1030;
+        }
+        
+        /* Content wrapper - this wraps both topbar and main content */
+        #content-wrapper {
+            flex: 1;
+            margin-left: 250px !important; /* Match sidebar width */
+            width: calc(100% - 250px) !important;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Top navbar - FIXED */
+        .topbar {
+            position: fixed !important;
+            top: 0;
+            left: 250px !important; /* Start after sidebar */
+            right: 0;
+            z-index: 1020;
+            height: 70px;
+            width: calc(100% - 250px) !important;
+        }
+        
+        /* Main content area */
+        #content {
+            margin-top: 70px; /* Space for fixed topbar */
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.09);
+            opacity: 1;
+            filter: blur(0px);
+        }
+        
+        /* Remove any conflicting margins */
+        .container-fluid {
+            opacity: 0.97;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Footer adjustment */
+        footer.bg-white.sticky-footer {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative !important;
+                width: 100% !important;
+                height: auto;
+            }
+            
+            #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            
+            .topbar {
+                position: relative !important;
+                left: 0 !important;
+                width: 100% !important;
+            }
+            
+            #content {
+                margin-top: 0;
+            }
+            
+            footer.bg-white.sticky-footer {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div id="content" style="background: rgba(255,255,255,0.09);opacity: 1;filter: blur(0px);">
-            <div class="container-fluid" style="opacity: 0.97;margin-top: 100px;">
+        <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
                 <div class="d-sm-flex justify-content-between align-items-center mb-4">
                     <h3 class="text-dark mb-0"><strong>ADMIN DASHBOARD</strong></h3>
                 </div>
