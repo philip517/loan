@@ -36,22 +36,67 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
             <hr class="my-0 sidebar-divider">
             <ul class="navbar-nav text-light" id="accordionSidebar">
                 <li class="nav-item"><a class="nav-link" href="index.php"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="loan.php"><i class="fas fa-hand-holding-usd"></i><span>Loans</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="message.php"><i class="fas fa-envelope"></i><span>Messages</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="overdue.php"><i class="fas fa-envelope"></i><span>Approved Loans Summary</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="paid_loan.php"><i class="fas fa-envelope"></i><span>Settled Loans</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="finances.php"><i class="fas fa-envelope"></i><span>Finances</span></a></li>
-
-                <li class="nav-item"><a class="nav-link" href="loan_activity.php"><i class="fas fa-envelope"></i><span>Admin Activity</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="notifications.php"><i class="fas fa-envelope"></i><span>Notification</span></a></li>
-
-
-
-                <li class="nav-item"><a class="nav-link" href="loan_request.php"><i class="fas fa-envelope"></i><span>Loan Requests</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="table.php"><i class="fas fa-table"></i><span>Staff</span></a></li>
-                <li class="nav-item"><a class="nav-link" href="user.php"><i class="fas fa-table"></i><span>Clients</span></a></li>
+                
+                <!-- Loans Management Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="loansDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-hand-holding-usd"></i><span>Loans Management</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="loansDropdown">
+                        <li><a class="dropdown-item" href="loan.php"><i class="fas fa-list me-2"></i>All Loans</a></li>
+                        <li><a class="dropdown-item" href="loan_request.php"><i class="fas fa-hand-paper me-2"></i>Loan Requests</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="overdue.php"><i class="fas fa-exclamation-triangle me-2"></i>Approved Loans Summary</a></li>
+                        <li><a class="dropdown-item" href="paid_loan.php"><i class="fas fa-check-circle me-2"></i>Settled Loans</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Communications Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="communicationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-envelope"></i><span>Communications</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="communicationsDropdown">
+                        <li><a class="dropdown-item" href="message.php"><i class="fas fa-envelope me-2"></i>Messages</a></li>
+                        <li><a class="dropdown-item" href="notifications.php"><i class="fas fa-bell me-2"></i>Notifications</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Financial Management Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="financeDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-chart-line"></i><span>Financial Management</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="financeDropdown">
+                        <li><a class="dropdown-item" href="finances.php"><i class="fas fa-money-bill-wave me-2"></i>Finances</a></li>
+                        <li><a class="dropdown-item" href="loan_activity.php"><i class="fas fa-history me-2"></i>Admin Activity</a></li>
+                    </ul>
+                </li>
+                
+                <!-- User Management Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-users"></i><span>User Management</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="usersDropdown">
+                        <li><a class="dropdown-item" href="user.php"><i class="fas fa-user-friends me-2"></i>Clients</a></li>
+                        <li><a class="dropdown-item" href="table.php"><i class="fas fa-user-tie me-2"></i>Staff</a></li>
+                        <li><a class="dropdown-item" href="add_user.php"><i class="fas fa-user-plus me-2"></i>Add User</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>My Profile</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Quick Links (Non-dropdown items if needed) -->
+                <!--
+                <li class="nav-item"><a class="nav-link" href="loan_activity.php"><i class="fas fa-history"></i><span>Admin Activity</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="notifications.php"><i class="fas fa-bell"></i><span>Notifications</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="loan_request.php"><i class="fas fa-hand-paper"></i><span>Loan Requests</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="table.php"><i class="fas fa-user-tie"></i><span>Staff</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="user.php"><i class="fas fa-user-friends"></i><span>Clients</span></a></li>
                 <li class="nav-item"><a class="nav-link active" href="profile.php"><i class="fas fa-user-circle"></i><span>Profile</span></a></li>
                 <li class="nav-item"><a class="nav-link" href="add_user.php"><i class="fas fa-user-plus"></i><span>Add User</span></a></li>
+                -->
             </ul>
         </div>
     </nav>
@@ -108,6 +153,35 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                 </div>
             </nav>
 
+<style>
+    /* Change dropdown colors from dark to light blue */
+    .sidebar .dropdown-menu {
+        background-color: rgba(165, 210, 245, 0.95) !important; /* Slightly lighter blue */
+        border: 1px solid rgba(140, 195, 240, 0.5);
+    }
+    
+    .sidebar .dropdown-item {
+        color: #2c3e50 !important; /* Dark text for contrast on light blue */
+    }
+    
+    .sidebar .dropdown-item:hover,
+    .sidebar .dropdown-item:focus {
+        color: #1a252f !important;
+        background-color: rgba(150, 200, 240, 0.3) !important; /* Slightly lighter blue hover */
+    }
+    
+    .sidebar .dropdown-item.active,
+    .sidebar .dropdown-item.active:hover,
+    .sidebar .dropdown-item.active:focus {
+        color: #ffffff !important;
+        background-color: #3498db !important; /* Blue for active item */
+    }
+    
+    .sidebar .dropdown-divider {
+        border-color: rgba(140, 195, 240, 0.5) !important;
+    }
+</style>
+
 <?php
 // // Function to display time elapsed in a human-readable format
 // function time_elapsed_string($datetime, $full = false) {
@@ -144,20 +218,60 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
 <script>
     // Get the current page filename
     const currentPage = window.location.pathname.split("/").pop();
-
-    // Select all sidebar links
-    const navLinks = document.querySelectorAll('#accordionSidebar .nav-link');
-
-    navLinks.forEach(link => {
-        // Get the href of the link
-        const linkPage = link.getAttribute('href');
-
-        // Compare and add 'active' class if it matches
-        if (linkPage === currentPage) {
-            link.classList.add('active');
-        } else {
+    
+    // Function to set active class for dropdown items
+    function setActiveNavItem() {
+        // Select all sidebar links (including dropdown items)
+        const navLinks = document.querySelectorAll('#accordionSidebar .nav-link, #accordionSidebar .dropdown-item');
+        
+        navLinks.forEach(link => {
+            // Get the href of the link
+            const linkPage = link.getAttribute('href');
+            
+            // Remove active class from all links first
             link.classList.remove('active');
-        }
+            
+            // Compare and add 'active' class if it matches current page
+            if (linkPage === currentPage) {
+                link.classList.add('active');
+                
+                // If this is a dropdown item, also mark the parent dropdown as active
+                if (link.classList.contains('dropdown-item')) {
+                    const parentDropdown = link.closest('.dropdown');
+                    if (parentDropdown) {
+                        const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
+                        if (dropdownToggle) {
+                            dropdownToggle.classList.add('active');
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Call the function when page loads
+    setActiveNavItem();
+    
+    // Also update when clicking on dropdown items
+    document.querySelectorAll('#accordionSidebar .dropdown-item').forEach(item => {
+        item.addEventListener('click', function() {
+            // Remove active class from all nav links
+            document.querySelectorAll('#accordionSidebar .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Add active class to clicked item
+            this.classList.add('active');
+            
+            // Also mark the parent dropdown as active
+            const parentDropdown = this.closest('.dropdown');
+            if (parentDropdown) {
+                const dropdownToggle = parentDropdown.querySelector('.dropdown-toggle');
+                if (dropdownToggle) {
+                    dropdownToggle.classList.add('active');
+                }
+            }
+        });
     });
 
     // Auto-refresh message count every 30 seconds
