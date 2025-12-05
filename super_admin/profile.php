@@ -87,42 +87,256 @@ if (!$user_data) {
     <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
-        .card-header {
-            font-weight: 600;
+<style>
+    /* Fix the sidebar position */
+    #wrapper {
+        display: flex;
+        position: relative;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px;
+        z-index: 1000;
+        overflow-y: auto;
+        transition: all 0.3s;
+        box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Fix the content wrapper position */
+    #content-wrapper {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+        min-height: 100vh;
+        position: relative;
+    }
+
+    /* Fix the top navbar position */
+    .topbar {
+        position: fixed !important;
+        top: 0;
+        left: 250px;
+        right: 0;
+        z-index: 999;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        height: 70px;
+    }
+
+    /* Main content area with proper spacing */
+    #content {
+        margin-top: 70px; /* Height of top navbar */
+        padding: 20px;
+        min-height: calc(100vh - 70px);
+        overflow-y: auto;
+        background: rgba(255,255,255,0.09);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .sidebar {
+            margin-left: -250px;
         }
-        .form-control-user {
-            border-radius: 0.35rem;
-            padding: 0.75rem 1rem;
+        
+        .sidebar.show {
+            margin-left: 0;
         }
-        .form-label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        
+        #content-wrapper {
+            margin-left: 0;
+            width: 100%;
         }
-        .border-left-primary {
-            border-left: 4px solid #007bff !important;
+        
+        .topbar {
+            left: 0;
         }
-        .border-left-success {
-            border-left: 4px solid #28a745 !important;
+    }
+
+    /* Ensure main content doesn't overflow */
+    .container-fluid {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    /* Scrollbar styling for sidebar */
+    .sidebar::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Ensure profile content is properly spaced */
+    .profile-section {
+        margin-bottom: 2rem;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
         }
-        .border-left-warning {
-            border-left: 4px solid #ffc107 !important;
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
-        .border-left-info {
-            border-left: 4px solid #17a2b8 !important;
+    }
+
+    /* Card styling enhancements */
+    .card {
+        border-radius: 10px;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-header {
+        font-weight: 600;
+        border-radius: 10px 10px 0 0 !important;
+        border-bottom: none;
+    }
+
+    .border-left-primary {
+        border-left: 4px solid #007bff !important;
+    }
+
+    .border-left-success {
+        border-left: 4px solid #28a745 !important;
+    }
+
+    .border-left-warning {
+        border-left: 4px solid #ffc107 !important;
+    }
+
+    .border-left-info {
+        border-left: 4px solid #17a2b8 !important;
+    }
+
+    /* Form styling */
+    .form-control-user {
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid #dee2e6;
+        transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .form-control-user:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+
+    /* Button styling */
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0056b3, #004494);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+    }
+
+    /* Alert styling */
+    .alert {
+        border-radius: 0.5rem;
+        border: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Badge styling */
+    .badge {
+        font-size: 0.8em;
+        padding: 0.4em 0.8em;
+        border-radius: 50px;
+    }
+
+    /* Responsive adjustments for mobile */
+    @media (max-width: 576px) {
+        #content {
+            padding: 15px;
         }
-        .profile-section {
-            margin-bottom: 2rem;
+        
+        .card-body {
+            padding: 15px;
         }
-    </style>
+        
+        .btn-primary {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .row > div {
+            margin-bottom: 15px;
+        }
+    }
+
+    /* Smooth scrolling for the entire page */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Loading animation for form submissions */
+    .loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border: 2px solid #007bff;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
 </head>
 <body id="page-top">
 <div id="wrapper">
     <!-- Sidebar -->
     <?php require 'navbar.php'; ?>
-    <div class="d-flex flex-column" id="content-wrapper">
-        <div id="content" style="background: rgba(255,255,255,0.09);">
-            <div class="container-fluid" style="margin-top: 80px;">
+ <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
                 <div class="d-sm-flex justify-content-between align-items-center mb-4">
                     <h3 class="text-dark mb-0"><strong>MY PROFILE</strong></h3>
                 </div>
@@ -275,7 +489,6 @@ if (!$user_data) {
                                                 <div class="mb-3">
                                                     <label class="form-label" for="new_password"><strong>New Password</strong></label>
                                                     <input class="form-control form-control-user" type="password" id="new_password" name="new_password" placeholder="Leave blank to keep current password">
-                                                    <small class="form-text text-muted">Minimum 6 characters</small>
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
@@ -332,5 +545,85 @@ if (!$user_data) {
 </div>
 <script src="assets/bootstrap/js/bootstrap.min.js"></script>
 <script src="assets/js/script.min.js"></script>
+<script>
+    // Handle sidebar toggle button
+    document.getElementById('sidebarToggleTop-1')?.addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.toggle('show');
+        
+        if (document.querySelector('.sidebar').classList.contains('show')) {
+            document.querySelector('#content-wrapper').style.marginLeft = '250px';
+            document.querySelector('.topbar').style.left = '250px';
+        } else {
+            document.querySelector('#content-wrapper').style.marginLeft = '0';
+            document.querySelector('.topbar').style.left = '0';
+        }
+    });
+
+    // Auto-hide sidebar on mobile when clicking outside
+    document.addEventListener('click', function(event) {
+        const sidebar = document.querySelector('.sidebar');
+        const toggleBtn = document.getElementById('sidebarToggleTop-1');
+        
+        if (window.innerWidth <= 768) {
+            if (!sidebar.contains(event.target) && !toggleBtn?.contains(event.target)) {
+                sidebar.classList.remove('show');
+                document.querySelector('#content-wrapper').style.marginLeft = '0';
+                document.querySelector('.topbar').style.left = '0';
+            }
+        }
+    });
+
+    // Handle form submissions with loading state
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.classList.add('loading');
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            }
+        });
+    });
+
+    // Add smooth scroll to top functionality
+    const scrollToTopBtn = document.createElement('button');
+    scrollToTopBtn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+    scrollToTopBtn.className = 'btn btn-primary scroll-to-top';
+    scrollToTopBtn.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    `;
+    
+    document.body.appendChild(scrollToTopBtn);
+
+    // Show/hide scroll to top button
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            scrollToTopBtn.style.display = 'block';
+        } else {
+            scrollToTopBtn.style.display = 'none';
+        }
+    });
+
+    // Scroll to top functionality
+    scrollToTopBtn.addEventListener('click', function() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+</script>
 </body>
 </html>

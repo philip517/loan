@@ -222,6 +222,112 @@ if ($y_axis_max < 10000) $y_axis_max = 10000; // Minimum 10,000
             font-weight: 600;
             font-family: 'Nunito', sans-serif;
         }
+        
+        /* ========== ADDED: FIXED NAVBAR & SIDEBAR CSS ========== */
+        /* Fixed layout styles */
+        body {
+            overflow-x: hidden;
+        }
+        
+        #wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar styles - FIXED */
+        .sidebar {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px !important;
+            overflow-y: auto;
+            z-index: 1030;
+        }
+        
+        /* Content wrapper - this wraps both topbar and main content */
+        #content-wrapper {
+            flex: 1;
+            margin-left: 250px !important;
+            width: calc(100% - 250px) !important;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Top navbar - FIXED */
+        .topbar {
+            position: fixed !important;
+            top: 0;
+            left: 250px !important;
+            right: 0;
+            z-index: 1020;
+            height: 70px;
+            width: calc(100% - 250px) !important;
+        }
+        
+        /* Main content area */
+        #content {
+            margin-top: 70px; /* Space for fixed topbar */
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.09);
+        }
+        
+        /* Remove any inline margin-top from container-fluid */
+        .container-fluid {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Footer adjustment */
+        footer.bg-white.sticky-footer {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative !important;
+                width: 100% !important;
+                height: auto;
+            }
+            
+            #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            
+            .topbar {
+                position: relative !important;
+                left: 0 !important;
+                width: 100% !important;
+            }
+            
+            #content {
+                margin-top: 0;
+                padding: 15px;
+            }
+            
+            footer.bg-white.sticky-footer {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .finance-card {
+                margin-bottom: 15px;
+            }
+            
+            .chart-container {
+                padding: 15px;
+            }
+            
+            .summary-box {
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body id="page-top">

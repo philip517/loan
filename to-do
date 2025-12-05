@@ -1,0 +1,14 @@
+things to finish before the 10th of December
+-Finance department -> this means ensuring that the loans money summary is accurate accoring to the data presented in them
+this may also include adding seperate files for finace summaries and stuff
+-migrate->the code from looking from one table to using user defined tables such as the admin table or the client table
+-in the user side add a restriction so that the user fills in their details before applying for a loan
+-add a notification panel for the admi and the user
+-refine code to use the loan number instead of the loan id saved in the database
+-add css to allow the navbar to be fixed to the side
+-in the paid loan section add a penalty column to show if the loan was paid with penalties or not
+-create a man number for the admins and users
+
+optional
+-add an online feature to show when an admin or user is online
+-improve ui for phone display (use the profile page as a guide)

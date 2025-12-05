@@ -90,79 +90,422 @@ $approval_rate = $total_reviews > 0 ?
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
     <style>
-        .clickable-row {
-            cursor: pointer;
-            transition: background-color 0.2s ease;
+    /* Fix the sidebar position */
+    #wrapper {
+        display: flex;
+        position: relative;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px;
+        z-index: 1000;
+        overflow-y: auto;
+        transition: all 0.3s;
+        box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Fix the content wrapper position */
+    #content-wrapper {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+        min-height: 100vh;
+        position: relative;
+    }
+
+    /* Fix the top navbar position */
+    .topbar {
+        position: fixed !important;
+        top: 0;
+        left: 250px;
+        right: 0;
+        z-index: 999;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        height: 70px;
+    }
+
+    /* Main content area with proper spacing */
+    #content {
+        margin-top: 70px; /* Height of top navbar */
+        padding: 20px;
+        min-height: calc(100vh - 70px);
+        overflow-y: auto;
+        background: rgba(255,255,255,0.09);
+    }
+
+    /* Admin Header Styling */
+    .admin-header {
+        background: #1A2980;
+        background: -webkit-linear-gradient(to right, #26D0CE, #1A2980);
+        background: linear-gradient(to left, #175e5cff, #1A2980);
+        color: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        animation: fadeIn 0.8s ease-in-out;
+    }
+
+    /* Statistics Cards */
+    .stats-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border-radius: 10px;
+        overflow: hidden;
+        border: none;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    /* Card border accents */
+    .border-left-primary { border-left: 4px solid #007bff !important; }
+    .border-left-success { border-left: 4px solid #28a745 !important; }
+    .border-left-danger { border-left: 4px solid #dc3545 !important; }
+    .border-left-warning { border-left: 4px solid #ffc107 !important; }
+
+    /* Table Styling */
+    .card.shadow {
+        border-radius: 10px;
+        border: none;
+        transition: transform 0.3s;
+    }
+
+    .card.shadow:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Clickable rows */
+    .clickable-row {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .clickable-row:hover {
+        background-color: rgba(0, 123, 255, 0.05) !important;
+        transform: translateX(3px);
+    }
+
+    /* Badge Styling */
+    .decision-badge, .status-badge, .amount-badge {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .amount-badge {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+        color: white !important;
+        border: none;
+    }
+
+    /* Search Input */
+    .dataTables_filter input {
+        border-radius: 25px;
+        padding: 8px 20px;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s;
+    }
+
+    .dataTables_filter input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        transform: scale(1.02);
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: #6c757d;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+        animation: pulse 2s infinite;
+    }
+
+    /* Back Button */
+    .back-button {
+        color: white;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .back-button:hover {
+        color: #e0e0e0;
+        transform: translateX(-3px);
+    }
+
+    /* Footer */
+    .sticky-footer {
+        border-top: 1px solid #dee2e6;
+        padding: 1rem 0;
+        margin-top: auto;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .sidebar {
+            margin-left: -250px;
+            z-index: 1050;
         }
-        .clickable-row:hover {
-            background-color: rgba(0, 123, 255, 0.1) !important;
+        
+        .sidebar.show {
+            margin-left: 0;
         }
-        .decision-badge {
-            font-size: 0.75em;
-            padding: 0.4em 0.8em;
+        
+        #content-wrapper {
+            margin-left: 0;
+            width: 100%;
         }
-        .status-badge {
-            font-size: 0.7em;
-            padding: 0.3em 0.6em;
+        
+        .topbar {
+            left: 0;
         }
-        .stats-card {
-            transition: transform 0.2s ease-in-out;
-        }
-        .stats-card:hover {
-            transform: translateY(-2px);
-        }
+        
         .admin-header {
-            background: #1A2980;  /* fallback for old browsers */
-            background: -webkit-linear-gradient(to right, #26D0CE, #1A2980);  /* Chrome 10-25, Safari 5.1-6 */
-            background: linear-gradient(to left, #175e5cff, #1A2980); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-            color: white;
-            border-radius: 10px;
-            padding: 2rem;
-            margin-bottom: 2rem;
+            padding: 1.5rem;
+            margin-top: 20px;
         }
-        .back-button {
-            color: white;
-            text-decoration: none;
+        
+        #content {
+            padding: 15px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .admin-header {
+            padding: 1rem;
+        }
+        
+        .stats-card {
+            margin-bottom: 15px;
+        }
+        
+        .card-body {
+            padding: 15px;
+        }
+        
+        .table-responsive {
             font-size: 0.9rem;
         }
-        .back-button:hover {
-            color: #e0e0e0;
+    }
+
+    /* Scrollbar styling */
+    .sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    #content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    #content::-webkit-scrollbar-thumb {
+        background: #007bff;
+        border-radius: 4px;
+    }
+
+    #content::-webkit-scrollbar-thumb:hover {
+        background: #0056b3;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
         }
-        .empty-state {
-            padding: 3rem 1rem;
-            text-align: center;
-            color: #6c757d;
+        to {
+            opacity: 1;
+            transform: translateY(0);
         }
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
             opacity: 0.5;
         }
-        .amount-badge {
-            font-size: 0.9em;
-            padding: 0.4em 0.8em;
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        50% {
+            opacity: 0.8;
         }
-        .collateral-text {
-            max-width: 150px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+    }
+
+    /* Scroll to top button */
+    .scroll-to-top {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        display: none;
+        z-index: 1000;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scroll-to-top:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .scroll-to-top.show {
+        display: flex;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    /* Loading overlay for table */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        border-radius: 10px;
+        display: none;
+    }
+
+    .loading-overlay.active {
+        display: flex;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Table improvements */
+    .table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table thead th {
+        border-top: none;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        padding: 12px 15px;
+        background-color: #f8f9fa;
+    }
+
+    .table tbody td {
+        padding: 12px 15px;
+        vertical-align: middle;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .table tbody tr:first-child td {
+        border-top: none;
+    }
+
+    /* Card header improvements */
+    .card-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+        background-color: #f8f9fa;
+        border-radius: 10px 10px 0 0 !important;
+        padding: 1rem 1.25rem;
+    }
+
+    /* Form control styling */
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+        transition: all 0.3s;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        transform: translateY(-1px);
+    }
+
+    /* Smooth scrolling for the entire page */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Ensure content doesn't get hidden behind fixed elements */
+    @media (min-width: 768px) {
+        #content {
+            padding-top: 30px;
         }
-        .currency-symbol {
-            font-weight: bold;
-            color: #2c3e50;
-        }
-    </style>
+    }
+
+    /* Mobile menu backdrop */
+    .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        display: none;
+    }
+
+    .sidebar-backdrop.show {
+        display: block;
+    }
+</style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content">
-                <div class="container-fluid" style="margin-top: 100px;">
-                    
+       <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
                     <!-- Admin Header -->
                     <div class="admin-header">
                         <a href="loan_activity.php" class="back-button mb-3 d-inline-block">
@@ -416,6 +759,232 @@ $approval_rate = $total_reviews > 0 ?
     </div>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
+    <script>
+    // Handle sidebar toggle button
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebarToggleTop-1');
+        const sidebar = document.querySelector('.sidebar');
+        const contentWrapper = document.getElementById('content-wrapper');
+        const topbar = document.querySelector('.topbar');
+        const content = document.getElementById('content');
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                sidebar.classList.toggle('show');
+                
+                // Create or remove backdrop
+                let backdrop = document.querySelector('.sidebar-backdrop');
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.className = 'sidebar-backdrop';
+                    document.body.appendChild(backdrop);
+                }
+                
+                if (sidebar.classList.contains('show')) {
+                    backdrop.classList.add('show');
+                    if (window.innerWidth <= 768) {
+                        contentWrapper.style.marginLeft = '250px';
+                        topbar.style.left = '250px';
+                    }
+                } else {
+                    backdrop.classList.remove('show');
+                    if (window.innerWidth <= 768) {
+                        contentWrapper.style.marginLeft = '0';
+                        topbar.style.left = '0';
+                    }
+                }
+                
+                // Close sidebar when clicking backdrop
+                backdrop.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
+                    backdrop.classList.remove('show');
+                    if (window.innerWidth <= 768) {
+                        contentWrapper.style.marginLeft = '0';
+                        topbar.style.left = '0';
+                    }
+                });
+            });
+        }
+
+        // Adjust layout on window resize
+        function adjustLayout() {
+            if (window.innerWidth > 768) {
+                contentWrapper.style.marginLeft = '250px';
+                topbar.style.left = '250px';
+                sidebar.classList.remove('show');
+                const backdrop = document.querySelector('.sidebar-backdrop');
+                if (backdrop) backdrop.classList.remove('show');
+            } else {
+                if (!sidebar.classList.contains('show')) {
+                    contentWrapper.style.marginLeft = '0';
+                    topbar.style.left = '0';
+                }
+            }
+        }
+
+        window.addEventListener('resize', adjustLayout);
+        adjustLayout(); // Initial adjustment
+
+        // Scroll to top functionality
+        const scrollToTopBtn = document.querySelector('.scroll-to-top');
+        if (scrollToTopBtn) {
+            // Update button position based on scroll
+            window.addEventListener('scroll', function() {
+                if (window.pageYOffset > 300) {
+                    scrollToTopBtn.classList.add('show');
+                } else {
+                    scrollToTopBtn.classList.remove('show');
+                }
+            });
+
+            // Scroll to top when clicked
+            scrollToTopBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+        }
+
+        // Enhanced search functionality with loading indicator
+        const loanSearch = document.getElementById('loanSearch');
+        if (loanSearch) {
+            let searchTimeout;
+            loanSearch.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                
+                // Show loading
+                const loadingOverlay = document.createElement('div');
+                loadingOverlay.className = 'loading-overlay active';
+                loadingOverlay.innerHTML = '<div class="spinner"></div>';
+                document.querySelector('.card-body').appendChild(loadingOverlay);
+                
+                searchTimeout = setTimeout(() => {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('#loansTable .clickable-row');
+                    let visibleCount = 0;
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        if (searchTerm === '' || text.includes(searchTerm)) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                    
+                    // Update table info
+                    const infoElement = document.querySelector('.dataTables_info');
+                    if (infoElement) {
+                        infoElement.textContent = `Showing ${visibleCount} completed loan review(s)`;
+                    }
+                    
+                    // Remove loading
+                    loadingOverlay.remove();
+                    
+                    // Scroll to top of table if not many results
+                    if (visibleCount < 3) {
+                        document.querySelector('.table-responsive').scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }, 300);
+            });
+        }
+
+        // Enhanced clickable rows with visual feedback
+        const clickableRows = document.querySelectorAll('.clickable-row');
+        clickableRows.forEach(row => {
+            row.addEventListener('click', function() {
+                const loanId = this.getAttribute('data-loan-id');
+                if (loanId) {
+                    // Add click animation
+                    this.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+                    setTimeout(() => {
+                        this.style.backgroundColor = '';
+                    }, 300);
+                    
+                    // Redirect after brief delay
+                    setTimeout(() => {
+                        window.location.href = `loan_review.php?loan_id=${loanId}`;
+                    }, 200);
+                }
+            });
+            
+            // Add hover effect with delay
+            row.addEventListener('mouseenter', function() {
+                this.style.transition = 'all 0.3s ease';
+            });
+        });
+
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Auto-hide sidebar on mobile when clicking outside
+        document.addEventListener('click', function(event) {
+            const backdrop = document.querySelector('.sidebar-backdrop');
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(event.target) && 
+                !sidebarToggle?.contains(event.target) &&
+                backdrop?.classList.contains('show')) {
+                
+                sidebar.classList.remove('show');
+                backdrop.classList.remove('show');
+                contentWrapper.style.marginLeft = '0';
+                topbar.style.left = '0';
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + F to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f' && loanSearch) {
+                e.preventDefault();
+                loanSearch.focus();
+            }
+            
+            // Escape to clear search
+            if (e.key === 'Escape' && loanSearch && document.activeElement === loanSearch) {
+                loanSearch.value = '';
+                loanSearch.dispatchEvent(new Event('input'));
+            }
+            
+            // Alt + S to toggle sidebar (on mobile)
+            if (e.altKey && e.key === 's' && window.innerWidth <= 768) {
+                e.preventDefault();
+                sidebarToggle?.click();
+            }
+        });
+
+        // Add tooltips to collateral text
+        document.querySelectorAll('.collateral-text').forEach(el => {
+            const fullText = el.getAttribute('title');
+            if (fullText && fullText.length > 20) {
+                el.setAttribute('data-bs-toggle', 'tooltip');
+                el.setAttribute('data-bs-placement', 'top');
+                el.setAttribute('title', fullText);
+                new bootstrap.Tooltip(el);
+            }
+        });
+
+        // Smooth loading of content
+        window.addEventListener('load', function() {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.3s';
+            
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    });
+</script>
     <script>
         // Make loan rows clickable and redirect to loan review page
         document.addEventListener('DOMContentLoaded', function() {

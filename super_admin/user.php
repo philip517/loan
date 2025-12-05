@@ -36,51 +36,84 @@ $deactivated_clients = $deactivated_stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
     <style>
-        .sticky-footer {
-            position: absolute;
-            bottom: 0;
+    /* Fix the sidebar position */
+    #wrapper {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px;
+        z-index: 1000;
+        overflow-y: auto;
+        transition: all 0.3s;
+    }
+
+    /* Fix the content wrapper position */
+    #content-wrapper {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+        min-height: 100vh;
+    }
+
+    /* Fix the top navbar position */
+    .topbar {
+        position: fixed !important;
+        top: 0;
+        left: 250px;
+        right: 0;
+        z-index: 999;
+        height: 70px;
+    }
+
+    /* Main content area with proper spacing */
+    #content {
+        margin-top: 70px; /* Height of top navbar */
+        padding: 25px;
+        min-height: calc(100vh - 70px);
+        overflow-y: auto;
+    }
+
+    /* Mobile responsive sidebar */
+    @media (max-width: 768px) {
+        .sidebar {
+            transform: translateX(-250px);
+        }
+        
+        .sidebar.show {
+            transform: translateX(0);
+        }
+        
+        #content-wrapper {
+            margin-left: 0;
             width: 100%;
-            height: 60px;
         }
-        .clickable-row {
-            cursor: pointer;
-            transition: background-color 0.2s ease;
+        
+        .topbar {
+            left: 0;
         }
-        .clickable-row:hover {
-            background-color: rgba(0, 123, 255, 0.1) !important;
+        
+        #content {
+            padding: 15px;
         }
-        .role-badge {
-            font-size: 0.75em;
-            padding: 0.25em 0.6em;
-        }
-        .status-badge {
-            font-size: 0.7em;
-            padding: 0.3em 0.6em;
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
-        }
-        .tab-pane {
-            padding-top: 1rem;
-        }
-        .empty-state {
-            padding: 3rem 1rem;
-            text-align: center;
-            color: #6c757d;
-        }
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-    </style>
+    }
+
+    /* Ensure content scrolls properly */
+    html, body {
+        overflow-x: hidden;
+    }
+</style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content">
+       <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
                 <div class="container-fluid" style="margin-top: 100px;">
                     <h3 class="text-dark mb-4">Clients</h3>
                     
@@ -252,6 +285,52 @@ $deactivated_clients = $deactivated_stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
+    <script>
+    // Handle sidebar toggle for mobile screens
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebarToggleTop-1');
+        const sidebar = document.querySelector('.sidebar');
+        const contentWrapper = document.getElementById('content-wrapper');
+        const topbar = document.querySelector('.topbar');
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                sidebar.classList.toggle('show');
+            });
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && 
+                    sidebar.classList.contains('show') &&
+                    event.target !== sidebarToggle) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+
+        // Adjust layout on window resize
+        function adjustLayout() {
+            if (window.innerWidth > 768) {
+                // On larger screens, ensure sidebar is visible
+                sidebar.classList.remove('show');
+                contentWrapper.style.marginLeft = '250px';
+                topbar.style.left = '250px';
+            } else {
+                // On mobile screens, sidebar is hidden by default
+                if (!sidebar.classList.contains('show')) {
+                    contentWrapper.style.marginLeft = '0';
+                    topbar.style.left = '0';
+                }
+            }
+        }
+
+        window.addEventListener('resize', adjustLayout);
+        adjustLayout(); // Initial adjustment
+    });
+</script>
     <script>
         // Make rows clickable and redirect to user profile
         document.addEventListener('DOMContentLoaded', function() {

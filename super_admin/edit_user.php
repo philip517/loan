@@ -21,7 +21,7 @@ $current_user_role = $current_user_stmt->fetchColumn();
 
 // Fetch target user data
 $user_sql = "
-    SELECT u.*, l.password_reset_phrase 
+    SELECT u.*
     FROM user_table u
     LEFT JOIN login_details l ON u.user_id = l.user_id
     WHERE u.user_id = ?
@@ -36,7 +36,7 @@ if (!$user_data) {
     exit;
 }
 
-require 'edit_user_form.php';
+// require 'edit_user_form.php';
 ?>
 <!DOCTYPE html>
 <html data-bs-theme="light" lang="en">

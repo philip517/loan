@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $role = $_POST['role'];
         $password = $_POST['password'];
         $confirm_password = $_POST['confirm_password'];
-        $reset_phrase = $_POST['reset_phrase'];
+       
 
         // Validate required fields
         if (empty($username) || empty($email) || empty($first_name) || empty($last_name) || empty($password)) {
@@ -97,43 +97,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
     <style>
-        .card-header {
-            font-weight: 600;
+    /* Fix the sidebar position */
+    #wrapper {
+        display: flex;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px;
+        z-index: 1000;
+        overflow-y: auto;
+        transition: all 0.3s;
+    }
+
+    /* Fix the content wrapper position */
+    #content-wrapper {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+        min-height: 100vh;
+    }
+
+    /* Fix the top navbar position */
+    .topbar {
+        position: fixed !important;
+        top: 0;
+        left: 250px;
+        right: 0;
+        z-index: 999;
+        height: 70px;
+    }
+
+    /* Main content area with proper spacing */
+    #content {
+        margin-top: 70px; /* Height of top navbar */
+        padding: 25px;
+        min-height: calc(100vh - 70px);
+        overflow-y: auto;
+        background: rgba(255,255,255,0.09);
+    }
+
+    /* Mobile responsive sidebar */
+    @media (max-width: 768px) {
+        .sidebar {
+            transform: translateX(-250px);
         }
-        .form-control-user {
-            border-radius: 0.35rem;
-            padding: 0.75rem 1rem;
+        
+        .sidebar.show {
+            transform: translateX(0);
         }
-        .form-label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        
+        #content-wrapper {
+            margin-left: 0;
+            width: 100%;
         }
-        .border-left-primary {
-            border-left: 4px solid #007bff !important;
+        
+        .topbar {
+            left: 0;
         }
-        .border-left-success {
-            border-left: 4px solid #28a745 !important;
+        
+        #content {
+            padding: 15px;
+            margin-top: 70px;
         }
-        .border-left-warning {
-            border-left: 4px solid #ffc107 !important;
-        }
-        .border-left-info {
-            border-left: 4px solid #17a2b8 !important;
-        }
-        .profile-section {
-            margin-bottom: 2rem;
-        }
-        .required-field::after {
-            content: " *";
-            color: #dc3545;
-        }
-    </style>
+    }
+
+    /* Ensure content scrolls properly */
+    html, body {
+        overflow-x: hidden;
+    }
+
+    /* Existing styles (keep your original styles) */
+    .card-header {
+        font-weight: 600;
+    }
+    .form-control-user {
+        border-radius: 0.35rem;
+        padding: 0.75rem 1rem;
+    }
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .border-left-primary {
+        border-left: 4px solid #007bff !important;
+    }
+    .border-left-success {
+        border-left: 4px solid #28a745 !important;
+    }
+    .border-left-warning {
+        border-left: 4px solid #ffc107 !important;
+    }
+    .border-left-info {
+        border-left: 4px solid #17a2b8 !important;
+    }
+    .profile-section {
+        margin-bottom: 2rem;
+    }
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+</style>
 </head>
 <body id="page-top">
 <div id="wrapper">
     <!-- Sidebar -->
     <?php require 'navbar.php'; ?>
-    <div class="d-flex flex-column" id="content-wrapper">
+    <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
         <div id="content" style="background: rgba(255,255,255,0.09);">
             <div class="container-fluid" style="margin-top: 80px;">
                 <div class="d-sm-flex justify-content-between align-items-center mb-4">
@@ -309,15 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-12">
-                                                <div class="mb-3">
-                                                    <label class="form-label required-field" for="reset_phrase"><strong>Password Reset Phrase</strong></label>
-                                                    <input class="form-control form-control-user" type="text" id="reset_phrase" name="reset_phrase" value="<?= htmlspecialchars($_POST['reset_phrase'] ?? '') ?>" required>
-                                                    <small class="form-text text-muted">This phrase will be used by the user to reset their password if they forget it</small>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        
                                     </div>
                                 </div>
                             </div>
@@ -354,6 +421,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 <script src="assets/bootstrap/js/bootstrap.min.js"></script>
 <script src="assets/js/script.min.js"></script>
+<script>
+    // Handle sidebar toggle for mobile screens
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebarToggleTop-1');
+        const sidebar = document.querySelector('.sidebar');
+        const contentWrapper = document.getElementById('content-wrapper');
+        const topbar = document.querySelector('.topbar');
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                sidebar.classList.toggle('show');
+            });
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && 
+                    sidebar.classList.contains('show') &&
+                    event.target !== sidebarToggle) {
+                    sidebar.classList.remove('show');
+                }
+            }
+        });
+
+        // Adjust layout on window resize
+        function adjustLayout() {
+            if (window.innerWidth > 768) {
+                // On larger screens, ensure sidebar is visible
+                sidebar.classList.remove('show');
+                contentWrapper.style.marginLeft = '250px';
+                topbar.style.left = '250px';
+            } else {
+                // On mobile screens, sidebar is hidden by default
+                if (!sidebar.classList.contains('show')) {
+                    contentWrapper.style.marginLeft = '0';
+                    topbar.style.left = '0';
+                }
+            }
+        }
+
+        window.addEventListener('resize', adjustLayout);
+        adjustLayout(); // Initial adjustment
+
+        // Password confirmation validation (your existing code)
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirm_password');
+        
+        function validatePassword() {
+            if (password.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity("Passwords do not match");
+            } else {
+                confirmPassword.setCustomValidity("");
+            }
+        }
+        
+        if (password && confirmPassword) {
+            password.addEventListener('change', validatePassword);
+            confirmPassword.addEventListener('keyup', validatePassword);
+        }
+    });
+</script>
 <script>
     // Password confirmation validation
     document.addEventListener('DOMContentLoaded', function() {
