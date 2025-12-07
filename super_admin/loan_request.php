@@ -2,53 +2,42 @@
 require 'auth_admin.php';
 require '../db_connect.php';
 
-// // Check if loan_requests table exists, create if not
-// try {
-//     $check_table = $pdo->query("SELECT 1 FROM loan_requests LIMIT 1");
-// } catch (PDOException $e) {
-//     // Create the table if it doesn't exist
-//     $create_table_sql = "CREATE TABLE IF NOT EXISTS `loan_requests` (
-//         `request_id` INT(11) NOT NULL AUTO_INCREMENT,
-//         `loan_id` INT(11) NOT NULL,
-//         `admin_id` INT(11) NOT NULL,
-//         `request_message` TEXT NOT NULL,
-//         `status` ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
-//         `admin_notes` TEXT NULL,
-//         `date_of_request` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//         `date_updated` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-//         PRIMARY KEY (`request_id`),
-//         FOREIGN KEY (`loan_id`) REFERENCES `loan`(`loan_id`) ON DELETE CASCADE,
-//         FOREIGN KEY (`admin_id`) REFERENCES `user_table`(`user_id`) ON DELETE CASCADE,
-//         INDEX `idx_loan_id` (`loan_id`),
-//         INDEX `idx_admin_id` (`admin_id`),
-//         INDEX `idx_status` (`status`),
-//         INDEX `idx_date_request` (`date_of_request`)
-//     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-    
-//     $pdo->exec($create_table_sql);
-// }
-
 // Get admin details
 $admin_id = $_SESSION['user_id'] ?? null;
 $admin_name = $_SESSION['first_name'] ?? 'Admin';
+
+// Get loan_number from URL if provided
+$loan_number = $_GET['loan_number'] ?? null;
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Create new request
     if (isset($_POST['create_request'])) {
-        $loan_id = $_POST['loan_id'] ?? null;
+        $loan_number = $_POST['loan_number'] ?? null;
         $request_message = $_POST['request_message'] ?? '';
         
-        if ($loan_id && $request_message && $admin_id) {
+        if ($loan_number && $request_message && $admin_id) {
             try {
-                $sql = "INSERT INTO loan_requests (loan_id, admin_id, request_message, status) 
-                        VALUES (?, ?, ?, 'pending')";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$loan_id, $admin_id, $request_message]);
+                // Get loan_id from loan_number first
+                $loan_sql = "SELECT loan_id FROM loan WHERE loan_number = ?";
+                $loan_stmt = $pdo->prepare($loan_sql);
+                $loan_stmt->execute([$loan_number]);
+                $loan = $loan_stmt->fetch(PDO::FETCH_ASSOC);
                 
-                $_SESSION['success_message'] = "Request created successfully!";
-                header("Location: loan_request.php?loan_id=" . $loan_id);
-                exit;
+                if ($loan) {
+                    $loan_id = $loan['loan_id'];
+                    
+                    $sql = "INSERT INTO loan_requests (loan_id, loan_number, admin_id, request_message, status) 
+                            VALUES (?, ?, ?, ?, 'pending')";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$loan_id, $loan_number, $admin_id, $request_message]);
+                    
+                    $_SESSION['success_message'] = "Request created successfully!";
+                    header("Location: loan_request.php?loan_number=" . urlencode($loan_number));
+                    exit;
+                } else {
+                    $_SESSION['error_message'] = "Loan not found with number: " . $loan_number;
+                }
             } catch (PDOException $e) {
                 $_SESSION['error_message'] = "Error creating request: " . $e->getMessage();
             }
@@ -70,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$status, $admin_notes, $request_id]);
                 
                 $_SESSION['success_message'] = "Request status updated successfully!";
-                header("Location: loan_request.php");
+                header("Location: loan_request.php" . ($loan_number ? "?loan_number=" . urlencode($loan_number) : ""));
                 exit;
             } catch (PDOException $e) {
                 $_SESSION['error_message'] = "Error updating request: " . $e->getMessage();
@@ -79,23 +68,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get loan_id from URL if provided
-$loan_id = $_GET['loan_id'] ?? null;
-
 // Fetch requests
 try {
-    if ($loan_id) {
-        // Fetch requests for specific loan
+    if ($loan_number) {
+        // Fetch requests for specific loan using loan_number
         $sql = "SELECT lr.*, l.loan_number, u.first_name, u.last_name, 
                        a.first_name as admin_first_name, a.last_name as admin_last_name
                 FROM loan_requests lr
                 JOIN loan l ON lr.loan_id = l.loan_id
                 JOIN user_table u ON l.user_id = u.user_id
                 JOIN user_table a ON lr.admin_id = a.user_id
-                WHERE lr.loan_id = ?
+                WHERE lr.loan_number = ?
                 ORDER BY lr.date_of_request DESC";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$loan_id]);
+        $stmt->execute([$loan_number]);
     } else {
         // Fetch all requests
         $sql = "SELECT lr.*, l.loan_number, u.first_name, u.last_name, 
@@ -114,17 +100,20 @@ try {
     $error = "Error fetching requests: " . $e->getMessage();
 }
 
-// Fetch loan details if loan_id is provided
+// Fetch loan details if loan_number is provided
 $loan_details = null;
-if ($loan_id) {
+if ($loan_number) {
     try {
         $loan_sql = "SELECT l.*, u.first_name, u.last_name 
                      FROM loan l 
                      JOIN user_table u ON l.user_id = u.user_id 
-                     WHERE l.loan_id = ?";
+                     WHERE l.loan_number = ?";
         $loan_stmt = $pdo->prepare($loan_sql);
-        $loan_stmt->execute([$loan_id]);
+        $loan_stmt->execute([$loan_number]);
         $loan_details = $loan_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Store loan_id from fetched data for navigation
+        $loan_id = $loan_details['loan_id'] ?? null;
     } catch (PDOException $e) {
         $loan_details = null;
     }
@@ -282,14 +271,14 @@ if ($loan_id) {
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
                         <h3 class="text-dark mb-0">
                             <i class="fas fa-hand-holding-usd me-2"></i>
-                            <?php echo $loan_id ? 'Loan Requests - #' . $loan_details['loan_number'] : 'All Loan Requests'; ?>
+                            <?php echo $loan_number ? 'Loan Requests - #' . $loan_number : 'All Loan Requests'; ?>
                         </h3>
                         <div>
-                            <?php if ($loan_id): ?>
+                            <?php if ($loan_number): ?>
                                 <a href="loan_request.php" class="btn btn-outline-primary me-2">
                                     <i class="fas fa-list me-1"></i>View All Requests
                                 </a>
-                                <a href="loan_review.php?loan_id=<?php echo $loan_id; ?>" class="btn btn-secondary">
+                                <a href="loan_review.php?loan_number=<?php echo urlencode($loan_number); ?>" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left me-1"></i>Back to Loan
                                 </a>
                             <?php else: ?>
@@ -302,7 +291,7 @@ if ($loan_id) {
 
                     <div class="row">
                         <!-- Create New Request Form -->
-                        <?php if ($loan_id && $loan_details): ?>
+                        <?php if ($loan_number && $loan_details): ?>
                        
 
                             <!-- Loan Information -->
@@ -328,12 +317,12 @@ if ($loan_id) {
                         <?php endif; ?>
 
                         <!-- Requests List -->
-                        <div class="<?php echo ($loan_id && $loan_details) ? 'col-lg-8' : 'col-12'; ?>">
+                        <div class="<?php echo ($loan_number && $loan_details) ? 'col-lg-8' : 'col-12'; ?>">
                             <div class="card shadow">
                                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                     <h6 class="text-primary fw-bold m-0">
                                         <i class="fas fa-list me-2"></i>
-                                        <?php echo $loan_id ? 'Requests for This Loan' : 'All Loan Requests'; ?>
+                                        <?php echo $loan_number ? 'Requests for This Loan' : 'All Loan Requests'; ?>
                                         <span class="badge bg-primary ms-2"><?php echo count($requests); ?></span>
                                     </h6>
                                     <div class="dropdown">
@@ -341,11 +330,11 @@ if ($loan_id) {
                                             <i class="fas fa-filter me-1"></i>Filter
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="?<?php echo $loan_id ? 'loan_id=' . $loan_id : ''; ?>">All</a></li>
-                                            <li><a class="dropdown-item" href="?<?php echo $loan_id ? 'loan_id=' . $loan_id . '&' : ''; ?>status=pending">Pending</a></li>
-                                            <li><a class="dropdown-item" href="?<?php echo $loan_id ? 'loan_id=' . $loan_id . '&' : ''; ?>status=approved">Approved</a></li>
-                                            <li><a class="dropdown-item" href="?<?php echo $loan_id ? 'loan_id=' . $loan_id . '&' : ''; ?>status=rejected">Rejected</a></li>
-                                            <li><a class="dropdown-item" href="?<?php echo $loan_id ? 'loan_id=' . $loan_id . '&' : ''; ?>status=completed">Completed</a></li>
+                                            <li><a class="dropdown-item" href="?<?php echo $loan_number ? 'loan_number=' . urlencode($loan_number) : ''; ?>">All</a></li>
+                                            <li><a class="dropdown-item" href="?<?php echo $loan_number ? 'loan_number=' . urlencode($loan_number) . '&' : ''; ?>status=pending">Pending</a></li>
+                                            <li><a class="dropdown-item" href="?<?php echo $loan_number ? 'loan_number=' . urlencode($loan_number) . '&' : ''; ?>status=approved">Approved</a></li>
+                                            <li><a class="dropdown-item" href="?<?php echo $loan_number ? 'loan_number=' . urlencode($loan_number) . '&' : ''; ?>status=rejected">Rejected</a></li>
+                                            <li><a class="dropdown-item" href="?<?php echo $loan_number ? 'loan_number=' . urlencode($loan_number) . '&' : ''; ?>status=completed">Completed</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -355,7 +344,7 @@ if ($loan_id) {
                                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                             <p class="text-muted mb-0">No requests found</p>
                                             <small class="text-muted">
-                                                <?php echo $loan_id ? 'Create the first request for this loan' : 'No loan requests have been created yet'; ?>
+                                                <?php echo $loan_number ? 'Create the first request for this loan' : 'No loan requests have been created yet'; ?>
                                             </small>
                                         </div>
                                     <?php else: ?>
@@ -428,7 +417,7 @@ if ($loan_id) {
                                                                 </form>
                                                                 
                                                                 <div class="text-end">
-                                                                    <a href="loan_review.php?loan_id=<?php echo $request['loan_id']; ?>" class="btn btn-outline-secondary btn-sm">
+                                                                    <a href="loan_review.php?loan_number=<?php echo urlencode($request['loan_number']); ?>" class="btn btn-outline-secondary btn-sm">
                                                                         <i class="fas fa-eye me-1"></i>View Loan
                                                                     </a>
                                                                 </div>

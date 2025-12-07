@@ -1,13 +1,35 @@
 <?php
 
+
+// Get loan_number from URL parameter instead of loan_id
+$loan_number = $_GET['loan_number'] ?? null;
+if (!$loan_number) {
+    $_SESSION['error_message'] = "Loan number not provided.";
+    header("Location: loan.php");
+    exit;
+}
+
 // Function to record loan review decision - ALWAYS CREATES NEW RECORDS
-function recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, $decision, $admin_notes = '') {
+function recordLoanReview($pdo, $loan_number, $admin_id, $decision, $admin_notes = '') {
     try {
         // Check if all required parameters are provided
-        if (empty($loan_id) || empty($loan_number) || empty($admin_id) || empty($decision)) {
-            error_log("Missing parameters: loan_id=$loan_id, loan_number=$loan_number, admin_id=$admin_id, decision=$decision");
+        if (empty($loan_number) || empty($admin_id) || empty($decision)) {
+            error_log("Missing parameters: loan_number=$loan_number, admin_id=$admin_id, decision=$decision");
             return false;
         }
+        
+        // Get loan_id from loan_number for the record
+        $loan_sql = "SELECT loan_id FROM loan WHERE loan_number = ?";
+        $loan_stmt = $pdo->prepare($loan_sql);
+        $loan_stmt->execute([$loan_number]);
+        $loan = $loan_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$loan) {
+            error_log("Loan not found with loan_number: $loan_number");
+            return false;
+        }
+        
+        $loan_id = $loan['loan_id'];
         
         // ALWAYS INSERT NEW REVIEW - don't check for existing ones
         $sql = "INSERT INTO loan_reviews (loan_id, loan_number, admin_id, decision, admin_notes) VALUES (?, ?, ?, ?, ?)";
@@ -16,7 +38,7 @@ function recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, $decision, $a
         
         if ($result) {
             $last_id = $pdo->lastInsertId();
-            error_log("Successfully inserted NEW loan review with ID: " . $last_id . " for loan_id: " . $loan_id . " with decision: " . $decision);
+            error_log("Successfully inserted NEW loan review with ID: " . $last_id . " for loan_number: " . $loan_number . " with decision: " . $decision);
             return $last_id;
         } else {
             error_log("Failed to execute INSERT statement for new review");
@@ -49,27 +71,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             throw new Exception("Admin ID not found in session. Please log in again.");
         }
 
-        // Fetch loan details including loan number, current status, and duration
-        $loan_sql = "SELECT loan_number, status, duration, progress FROM loan WHERE loan_id = ?";
+        // Fetch loan details including loan ID, current status, and duration using loan_number
+        $loan_sql = "SELECT loan_id, status, duration, progress FROM loan WHERE loan_number = ?";
         $loan_stmt = $pdo->prepare($loan_sql);
-        $loan_stmt->execute([$loan_id]);
+        $loan_stmt->execute([$loan_number]);
         $loan_data = $loan_stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$loan_data) {
             throw new Exception("Loan not found");
         }
         
-        $loan_number = $loan_data['loan_number'] ?? null;
+        $loan_id = $loan_data['loan_id'];
         $current_status = $loan_data['status'] ?? 'pending';
         $loan_duration = $loan_data['duration'] ?? 0;
         $current_progress = $loan_data['progress'] ?? null;
 
         // Debug: Check current values
-        error_log("Loan Number: " . ($loan_number ?? 'NULL') . ", Current Status: $current_status, New Status: $new_status, Duration: $loan_duration weeks, Current Progress: " . ($current_progress ?? 'NULL'));
-
-        if (!$loan_number) {
-            throw new Exception("Loan number not found for this loan");
-        }
+        error_log("Loan Number: $loan_number, Loan ID: $loan_id, Current Status: $current_status, New Status: $new_status, Duration: $loan_duration weeks, Current Progress: " . ($current_progress ?? 'NULL'));
 
         // Prepare update SQL based on status
         if ($new_status === 'approved' && $current_status !== 'approved') {
@@ -80,9 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             error_log("Setting loan dates - Start: $start_date, End: $end_date (Duration: $loan_duration weeks)");
             
             // Update loan status, dates, and progress
-            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = ?, progress = 'current' WHERE loan_id = ?";
+            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = ?, progress = 'current' WHERE loan_number = ?";
             $update_stmt = $pdo->prepare($update_sql);
-            $update_stmt->execute([$new_status, $start_date, $end_date, $loan_id]);
+            $update_stmt->execute([$new_status, $start_date, $end_date, $loan_number]);
             
             $_SESSION['success_message'] = "Loan approved successfully! Start date set to today and end date calculated based on " . $loan_duration . " week(s) duration. Progress set to 'current'.";
             
@@ -93,9 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             error_log("Setting loan start date for pending status - Start: $start_date, Progress: NULL");
             
             // Update loan status, start date, and set progress to NULL
-            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = NULL, progress = NULL WHERE loan_id = ?";
+            $update_sql = "UPDATE loan SET status = ?, loan_start_date = ?, loan_end_date = NULL, progress = NULL WHERE loan_number = ?";
             $update_stmt = $pdo->prepare($update_sql);
-            $update_stmt->execute([$new_status, $start_date, $loan_id]);
+            $update_stmt->execute([$new_status, $start_date, $loan_number]);
             
             $_SESSION['success_message'] = "Loan status set to Pending! Start date updated to today and progress reset.";
             
@@ -103,16 +121,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             // For other status changes (rejected), update status and clear dates and progress
             if ($new_status === 'rejected') {
                 // Clear dates and progress when rejecting a loan
-                $update_sql = "UPDATE loan SET status = ?, loan_start_date = NULL, loan_end_date = NULL, progress = NULL WHERE loan_id = ?";
+                $update_sql = "UPDATE loan SET status = ?, loan_start_date = NULL, loan_end_date = NULL, progress = NULL WHERE loan_number = ?";
                 $update_stmt = $pdo->prepare($update_sql);
-                $update_stmt->execute([$new_status, $loan_id]);
+                $update_stmt->execute([$new_status, $loan_number]);
                 
                 $_SESSION['success_message'] = "Loan rejected successfully! Loan dates cleared and progress reset.";
             } else {
                 // For status changes that don't require date updates, only update status
-                $update_sql = "UPDATE loan SET status = ? WHERE loan_id = ?";
+                $update_sql = "UPDATE loan SET status = ? WHERE loan_number = ?";
                 $update_stmt = $pdo->prepare($update_sql);
-                $update_stmt->execute([$new_status, $loan_id]);
+                $update_stmt->execute([$new_status, $loan_number]);
                 
                 $_SESSION['success_message'] = "Loan status updated to " . ucfirst($new_status) . " successfully!";
             }
@@ -122,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         if (($new_status === 'approved' || $new_status === 'rejected' || $new_status === 'pending') && $current_status !== $new_status) {
             error_log("Attempting to record loan review for status: " . $new_status);
             
-            $review_id = recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, $new_status, $admin_notes);
+            $review_id = recordLoanReview($pdo, $loan_number, $admin_id, $new_status, $admin_notes);
             
             if ($review_id) {
                 $_SESSION['success_message'] .= " Review recorded in audit trail.";
@@ -135,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             error_log("No review recorded - status didn't change or was already set");
         }
         
-        header("Location: loan_review.php?loan_id=" . $loan_id);
+        header("Location: loan_review.php?loan_number=" . urlencode($loan_number));
         exit;
         
     } catch (Exception $e) {
@@ -153,31 +171,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_as_paid'])) {
             throw new Exception("Admin ID not found in session. Please log in again.");
         }
 
-        // Check if loan is approved
-        $loan_check_sql = "SELECT loan_number, status FROM loan WHERE loan_id = ? AND status = 'approved'";
+        // Check if loan is approved using loan_number
+        $loan_check_sql = "SELECT loan_id, status FROM loan WHERE loan_number = ? AND status = 'approved'";
         $loan_check_stmt = $pdo->prepare($loan_check_sql);
-        $loan_check_stmt->execute([$loan_id]);
+        $loan_check_stmt->execute([$loan_number]);
         $loan_data = $loan_check_stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$loan_data) {
             throw new Exception("Loan not found or not approved. Only approved loans can be marked as paid.");
         }
         
-        $loan_number = $loan_data['loan_number'];
+        $loan_id = $loan_data['loan_id'];
         
         // Update loan progress to 'paid' and set payment date
         $payment_date = date('Y-m-d'); // Current date as payment date
         
-        $update_sql = "UPDATE loan SET progress = 'paid', payment_date = ? WHERE loan_id = ? AND status = 'approved'";
+        $update_sql = "UPDATE loan SET progress = 'paid', payment_date = ? WHERE loan_number = ? AND status = 'approved'";
         $update_stmt = $pdo->prepare($update_sql);
-        $update_result = $update_stmt->execute([$payment_date, $loan_id]);
+        $update_result = $update_stmt->execute([$payment_date, $loan_number]);
         
         if (!$update_result) {
             throw new Exception("Failed to update loan progress to paid.");
         }
         
         // Record this action in loan_reviews table
-        $review_id = recordLoanReview($pdo, $loan_id, $loan_number, $admin_id, 'marked_paid', 'Loan marked as paid on ' . $payment_date);
+        $review_id = recordLoanReview($pdo, $loan_number, $admin_id, 'marked_paid', 'Loan marked as paid on ' . $payment_date);
         
         if ($review_id) {
             $_SESSION['success_message'] = "Loan marked as paid successfully! Payment date set to " . date('F j, Y', strtotime($payment_date)) . ". Review recorded in audit trail.";
@@ -188,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_as_paid'])) {
             error_log("Loan marked as paid but review recording failed");
         }
         
-        header("Location: loan_review.php?loan_id=" . $loan_id);
+        header("Location: loan_review.php?loan_number=" . urlencode($loan_number));
         exit;
         
     } catch (Exception $e) {
@@ -203,13 +221,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
         $topic = $_POST['topic'];
         $message_text = $_POST['message_text'];
         
+        // Get loan_id from loan_number for message
+        $loan_id_sql = "SELECT loan_id FROM loan WHERE loan_number = ?";
+        $loan_id_stmt = $pdo->prepare($loan_id_sql);
+        $loan_id_stmt->execute([$loan_number]);
+        $loan = $loan_id_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$loan) {
+            throw new Exception("Loan not found");
+        }
+        
+        $loan_id = $loan['loan_id'];
+        
         $message_sql = "INSERT INTO message (status, topic, message_text, type, loan_id) 
                        VALUES ('sent', ?, ?, 'admin_to_user', ?)";
         $message_stmt = $pdo->prepare($message_sql);
         $message_stmt->execute([$topic, $message_text, $loan_id]);
         
         $_SESSION['success_message'] = "Message sent successfully!";
-        header("Location: loan_review.php?loan_id=" . $loan_id);
+        header("Location: loan_review.php?loan_number=" . urlencode($loan_number));
         exit;
         
     } catch (Exception $e) {
@@ -217,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     }
 }
 
-// Fetch specific loan details with user and kin information
+// Fetch specific loan details with user and kin information using loan_number
 try {
     $loan_sql = "SELECT l.*, u.first_name, u.last_name, u.phone, u.NRC, u.email, u.occupation, u.address,
                         k.first_name as kin_first_name, k.last_name as kin_last_name, 
@@ -225,9 +255,9 @@ try {
                  FROM loan l 
                  JOIN user_table u ON l.user_id = u.user_id 
                  LEFT JOIN kin k ON l.loan_id = k.loan_id 
-                 WHERE l.loan_id = ?";
+                 WHERE l.loan_number = ?";
     $loan_stmt = $pdo->prepare($loan_sql);
-    $loan_stmt->execute([$loan_id]);
+    $loan_stmt->execute([$loan_number]);
     $loan = $loan_stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$loan) {
@@ -236,21 +266,24 @@ try {
         exit;
     }
     
+    // Store loan_id from fetched data for other functions
+    $loan_id = $loan['loan_id'];
+    
 } catch (PDOException $e) {
     die("Error fetching loan details: " . $e->getMessage());
 }
 
 // Function to get review history for display
-function getLoanReviewInfo($pdo, $loan_id) {
+function getLoanReviewInfo($pdo, $loan_number) {
     try {
         $sql = "SELECT lr.*, a.username as admin_name 
                 FROM loan_reviews lr 
                 LEFT JOIN admin_users a ON lr.admin_id = a.admin_id 
-                WHERE lr.loan_id = ? 
+                WHERE lr.loan_number = ? 
                 ORDER BY lr.review_date DESC 
                 LIMIT 1";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$loan_id]);
+        $stmt->execute([$loan_number]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Error fetching review info: " . $e->getMessage());
@@ -259,18 +292,18 @@ function getLoanReviewInfo($pdo, $loan_id) {
 }
 
 // Function to get ALL past loan reviews for this loan
-function getAllLoanReviews($pdo, $loan_id) {
+function getAllLoanReviews($pdo, $loan_number) {
     try {
         $sql = "SELECT lr.*, a.username as admin_name 
                 FROM loan_reviews lr 
                 LEFT JOIN user_table a ON lr.admin_id = a.user_id 
-                WHERE lr.loan_id = ? 
+                WHERE lr.loan_number = ? 
                 ORDER BY lr.review_date DESC";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$loan_id]);
+        $stmt->execute([$loan_number]);
         $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        error_log("Found " . count($reviews) . " reviews for loan_id: " . $loan_id);
+        error_log("Found " . count($reviews) . " reviews for loan_number: " . $loan_number);
         return $reviews;
         
     } catch (PDOException $e) {
@@ -298,11 +331,17 @@ function checkLoanOverdue($loan_end_date) {
 }
 
 // Function to display loan details
-function displayLoanDetails($loan, $pdo) {
+function displayLoanDetails($loan, $pdo, $loan_number) {
     // Check if loan is overdue
     $overdue_info = checkLoanOverdue($loan['loan_end_date'] ?? '');
     $is_overdue = $overdue_info['is_overdue'];
     $overdue_days = $overdue_info['overdue_days'];
+    
+    // Check if loan is paid
+    $is_paid = ($loan['progress'] === 'paid');
+    
+    // Calculate penalty amount if overdue
+    $penalty_amount = $is_overdue ? $overdue_days * 15 : 0;
     
     $status_color = match($loan['status']) {
         'approved' => 'success',
@@ -328,11 +367,8 @@ function displayLoanDetails($loan, $pdo) {
     $interest_percentage = $loan['amount'] > 0 ? ($loan['interest'] / $loan['amount']) * 100 : 0;
     $total_repayment = $loan['amount'] + $loan['interest'];
     
-    // Get loan number or display placeholder
-    $loan_number = $loan['loan_number'] ?? 'N/A';
-    
     // Get review information if available
-    $review_info = getLoanReviewInfo($pdo, $loan['loan_id']);
+    $review_info = getLoanReviewInfo($pdo, $loan_number);
     $review_section = '';
     
     if ($review_info) {
@@ -388,7 +424,7 @@ function displayLoanDetails($loan, $pdo) {
     }
     
     // Get ALL past loan reviews for this loan
-    $all_reviews = getAllLoanReviews($pdo, $loan['loan_id']);
+    $all_reviews = getAllLoanReviews($pdo, $loan_number);
     $past_reviews_section = '';
     
     // ALWAYS show the past reviews card, even if empty
@@ -463,9 +499,9 @@ function displayLoanDetails($loan, $pdo) {
         </div>
     </div>';
     
-    // Overdue alert section
+    // Overdue alert section - Only show for non-paid overdue loans
     $overdue_alert = '';
-    if ($is_overdue && $loan['status'] === 'approved') {
+    if ($is_overdue && $loan['status'] === 'approved' && !$is_paid) {
         $overdue_alert = '
         <div class="row">
             <div class="col-12">
@@ -491,7 +527,7 @@ function displayLoanDetails($loan, $pdo) {
     
     // Show date calculation info for pending loans
     $date_calculation_info = '';
-    if ($loan['status'] === 'pending') {
+    if ($loan['status'] === 'pending' && !$is_paid) {
         $calculated_end_date = date('Y-m-d', strtotime("+{$loan['duration']} weeks"));
         $date_calculation_info = '
         <div class="alert alert-info mb-4">
@@ -503,17 +539,165 @@ function displayLoanDetails($loan, $pdo) {
     
     // Show paid status info if loan is already paid
     $paid_info = '';
-    if ($loan['progress'] === 'paid') {
+    if ($is_paid) {
         $payment_date = $loan['payment_date'] ?? 'Unknown';
-        $paid_info = '
-        <div class="alert alert-success mb-4">
-            <i class="fas fa-check-circle me-2"></i>
-            <strong>Loan Paid:</strong> This loan has been marked as paid on ' . date('F j, Y', strtotime($payment_date)) . '.
-        </div>';
+        $formatted_payment_date = date('F j, Y', strtotime($payment_date));
+        
+        // Check if loan was overdue when paid
+        $loan_end_date = $loan['loan_end_date'] ?? null;
+        $was_overdue = false;
+        
+        if ($loan_end_date) {
+            $payment_timestamp = strtotime($payment_date);
+            $end_timestamp = strtotime($loan_end_date);
+            $was_overdue = ($payment_timestamp > $end_timestamp);
+        }
+        
+        // Create different messages based on whether it was overdue
+        if ($was_overdue && $overdue_days > 0) {
+            $total_with_penalty = $total_repayment + $penalty_amount;
+            $paid_info = '
+            <div class="alert alert-success mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle fa-2x me-3"></i>
+                    <div>
+                        <h4 class="alert-heading mb-1">LOAN PAID - WITH OVERDUE PENALTY</h4>
+                        <p class="mb-0">
+                            This loan was marked as paid on <strong>' . $formatted_payment_date . '</strong>.
+                        </p>
+                        <p class="mb-0">
+                            <strong>Important:</strong> This loan was <span class="text-danger"><strong>' . $overdue_days . ' day(s) overdue</strong></span> when paid.
+                        </p>
+                        <p class="mb-0 mt-2">
+                            <strong>Penalty Details:</strong>
+                            <ul class="mb-0">
+                                <li>Daily penalty rate: K15 per day</li>
+                                <li>Overdue days: ' . $overdue_days . ' day(s)</li>
+                                <li><strong>Total penalty added: K' . number_format($penalty_amount, 2) . '</strong></li>
+                                <li>Original repayment amount: K' . number_format($total_repayment, 2) . '</li>
+                                <li><strong>Final amount paid: K' . number_format($total_with_penalty, 2) . '</strong></li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>';
+        } else {
+            $paid_info = '
+            <div class="alert alert-success mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle fa-2x me-3"></i>
+                    <div>
+                        <h4 class="alert-heading mb-1">LOAN PAID - ON TIME</h4>
+                        <p class="mb-0">
+                            <strong>This loan has been fully paid on ' . $formatted_payment_date . '.</strong>
+                        </p>
+                        <p class="mb-0 mt-1">
+                            <strong>Final Amount Paid:</strong> K' . number_format($total_repayment, 2) . '
+                        </p>
+                        ' . ($loan_end_date ? '<p class="mb-0"><strong>Paid before due date:</strong> Yes</p>' : '') . '
+                    </div>
+                </div>
+            </div>';
+        }
     }
     
     // Determine if mark as paid button should be shown
-    $show_mark_paid = ($loan['status'] === 'approved' && $loan['progress'] !== 'paid');
+    $show_mark_paid = ($loan['status'] === 'approved' && !$is_paid);
+    
+    // Admin Actions Section - Only show if loan is NOT paid
+    $admin_actions_section = '';
+    if (!$is_paid) {
+        $admin_actions_section = '
+        <!-- Admin Actions -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label"><strong>Update Loan Status</strong></label>
+                                <select class="form-select" name="status" required>
+                                    <option value="pending" ' . ($loan['status'] == 'pending' ? 'selected' : '') . '>Pending</option>
+                                    <option value="approved" ' . ($loan['status'] == 'approved' ? 'selected' : '') . '>Approve</option>
+                                    <option value="rejected" ' . ($loan['status'] == 'rejected' ? 'selected' : '') . '>Reject</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Admin Notes</strong></label>
+                                <textarea class="form-control" name="admin_notes" rows="2" 
+                                          placeholder="Add notes about this loan decision...">' . ($review_info['admin_notes'] ?? '') . '</textarea>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" name="update_status" class="btn btn-primary w-100">
+                                    <i class="fas fa-save me-2"></i>Update
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-3 text-end">
+                            <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#messageModal">
+                                <i class="fas fa-envelope me-2"></i>Send Message to Client
+                            </button>
+                            <a href="loan.php" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Loans
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    } else {
+        // If loan is paid, show only back button
+        $admin_actions_section = '
+        <!-- Completed Loan - No Admin Actions -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Loan Completed</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>This loan has been fully paid and completed.</strong> No further actions can be taken on paid loans.
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="loan.php" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Loans
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    }
+    
+    // Loan Details - Show penalty info for paid overdue loans
+    $loan_details_penalty_info = '';
+    if ($is_paid && $was_overdue && $overdue_days > 0) {
+        $loan_details_penalty_info = '
+        <div class="alert alert-warning mt-2 p-2">
+            <small>
+                <i class="fas fa-history me-1"></i><strong>Payment History:</strong> This loan was paid after being overdue
+                <br><i class="fas fa-clock me-1"></i><strong>Was overdue by:</strong> ' . $overdue_days . ' day(s) when paid
+                <br><i class="fas fa-exclamation-triangle me-1"></i><strong>Daily Penalty Applied:</strong> K15 per day
+                <br><i class="fas fa-calculator me-1"></i><strong>Total Penalty Paid:</strong> K' . number_format($penalty_amount, 2) . '
+            </small>
+        </div>';
+    } elseif ($is_overdue && $loan['status'] === 'approved' && !$is_paid) {
+        $loan_details_penalty_info = '
+        <div class="alert alert-warning mt-2 p-2">
+            <small>
+                <i class="fas fa-clock me-1"></i><strong>Overdue by:</strong> ' . $overdue_days . ' day(s)
+                <br><i class="fas fa-exclamation-triangle me-1"></i><strong>Daily Penalty:</strong> K15 per day
+                <br><i class="fas fa-calculator me-1"></i><strong>Total Penalty:</strong> K' . number_format($penalty_amount, 2) . '
+            </small>
+        </div>';
+    }
     
     return '
     <div class="card shadow-lg border-0 mb-4">
@@ -529,9 +713,9 @@ function displayLoanDetails($loan, $pdo) {
                     </div>
                 </div>
                 <div class="col-auto">
-                    ' . ($is_overdue && $loan['status'] === 'approved' ? '<span class="badge bg-danger fs-6 me-2">OVERDUE</span>' : '') . '
-                    ' . ($loan['progress'] === 'paid' ? '<span class="badge bg-info fs-6 me-2">PAID</span>' : '') . '
-                    <span class="badge bg-' . $status_color . ' fs-6">' . strtoupper($loan['status'] ?? 'PENDING') . '</span>
+                    ' . ($is_paid ? '' : ($is_overdue && $loan['status'] === 'approved' ? '<span class="badge bg-danger fs-6 me-2">OVERDUE</span>' : '')) . '
+                    ' . ($is_paid ? '<span class="badge bg-info fs-6 me-2">PAID</span>' : '') . '
+                    ' . ($is_paid ? '' : '<span class="badge bg-' . $status_color . ' fs-6">' . strtoupper($loan['status'] ?? 'PENDING') . '</span>') . '
                 </div>
             </div>
         </div>
@@ -590,17 +774,10 @@ function displayLoanDetails($loan, $pdo) {
                             <p><strong>Total Repayment:</strong> K' . number_format($total_repayment, 2) . '</p>
                             <p><strong>Start Date:</strong> ' . ($loan['loan_start_date'] ?? 'Not set') . '</p>
                             <p><strong>End Date:</strong> ' . ($loan['loan_end_date'] ?? 'Not set') . ' 
-                                ' . ($is_overdue && $loan['status'] === 'approved' ? '<span class="badge bg-danger ms-2">OVERDUE</span>' : '') . '
+                                ' . ($is_overdue && $loan['status'] === 'approved' && !$is_paid ? '<span class="badge bg-danger ms-2">OVERDUE</span>' : '') . '
                             </p>
                             ' . ($loan['payment_date'] ? '<p><strong>Payment Date:</strong> ' . date('F j, Y', strtotime($loan['payment_date'])) . '</p>' : '') . '
-                            ' . ($is_overdue && $loan['status'] === 'approved' ? '
-                            <div class="alert alert-warning mt-2 p-2">
-                                <small>
-                                    <i class="fas fa-clock me-1"></i><strong>Overdue by:</strong> ' . $overdue_days . ' day(s)
-                                    <br><i class="fas fa-exclamation-triangle me-1"></i><strong>Daily Penalty:</strong> K15 per day
-                                    <br><i class="fas fa-calculator me-1"></i><strong>Total Penalty:</strong> K' . number_format($overdue_days * 15, 2) . '
-                                </small>
-                            </div>' : '') . '
+                            ' . $loan_details_penalty_info . '
                         </div>
                     </div>
                 </div>
@@ -644,47 +821,7 @@ function displayLoanDetails($loan, $pdo) {
                 </div>
             </div>
             
-            <!-- Admin Actions -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-dark text-white">
-                            <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Admin Actions</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST" action="" class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label"><strong>Update Loan Status</strong></label>
-                                    <select class="form-select" name="status" required>
-                                        <option value="pending" ' . ($loan['status'] == 'pending' ? 'selected' : '') . '>Pending</option>
-                                        <option value="approved" ' . ($loan['status'] == 'approved' ? 'selected' : '') . '>Approve</option>
-                                        <option value="rejected" ' . ($loan['status'] == 'rejected' ? 'selected' : '') . '>Reject</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label"><strong>Admin Notes</strong></label>
-                                    <textarea class="form-control" name="admin_notes" rows="2" 
-                                              placeholder="Add notes about this loan decision...">' . ($review_info['admin_notes'] ?? '') . '</textarea>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-end">
-                                    <button type="submit" name="update_status" class="btn btn-primary w-100">
-                                        <i class="fas fa-save me-2"></i>Update
-                                    </button>
-                                </div>
-                            </form>
-                            
-                            <div class="mt-3 text-end">
-                                <button class="btn btn-outline-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#messageModal">
-                                    <i class="fas fa-envelope me-2"></i>Send Message to Client
-                                </button>
-                                <a href="loan.php" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left me-2"></i>Back to Loans
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            ' . $admin_actions_section . '
             
             ' . ($show_mark_paid ? '
             <!-- Mark as Paid Action -->
@@ -705,6 +842,13 @@ function displayLoanDetails($loan, $pdo) {
                                     <li>Move the loan to the "Paid Loans" section</li>
                                 </ul>
                             </div>
+                            ' . ($is_overdue ? '
+                            <div class="alert alert-warning mb-4">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Overdue Loan Notice:</strong> This loan is currently <strong>' . $overdue_days . ' day(s) overdue</strong>.
+                                <br>If marked as paid now, a penalty of <strong>K' . number_format($penalty_amount, 2) . '</strong> will be added.
+                                <br><small>Daily penalty rate: K15 per day</small>
+                            </div>' : '') . '
                             <form method="POST" action="">
                                 <div class="text-center">
                                     <button type="submit" name="mark_as_paid" class="btn btn-success btn-lg" onclick="return confirm(\'Are you sure you want to mark this loan as paid? This action cannot be undone.\')">
@@ -722,5 +866,3 @@ function displayLoanDetails($loan, $pdo) {
         </div>
     </div>';
 }
-
-?>

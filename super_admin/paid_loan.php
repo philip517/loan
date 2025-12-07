@@ -170,15 +170,134 @@ unset($loan); // Break the reference
             margin: 5px 0;
             border-radius: 4px;
         }
+        /* Fixed layout styles */
+        body {
+            overflow-x: hidden;
+        }
+        
+        #wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar styles - FIXED */
+        .sidebar {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px !important;
+            overflow-y: auto;
+            z-index: 1030;
+        }
+        
+        /* Content wrapper - this wraps both topbar and main content */
+        #content-wrapper {
+            flex: 1;
+            margin-left: 250px !important;
+            width: calc(100% - 250px) !important;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Top navbar - FIXED */
+        .topbar {
+            position: fixed !important;
+            top: 0;
+            left: 250px !important;
+            right: 0;
+            z-index: 1020;
+            height: 70px;
+            width: calc(100% - 250px) !important;
+        }
+        
+        /* Main content area */
+        #content {
+            margin-top: 70px; /* Space for fixed topbar */
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.09);
+        }
+        
+        /* Remove the inline margin-top from container-fluid */
+        .container-fluid {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        
+        /* Footer adjustment */
+        footer.bg-white.sticky-footer {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative !important;
+                width: 100% !important;
+                height: auto;
+            }
+            
+            #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            
+            .topbar {
+                position: relative !important;
+                left: 0 !important;
+                width: 100% !important;
+            }
+            
+            #content {
+                margin-top: 0;
+                padding: 15px;
+            }
+            
+            footer.bg-white.sticky-footer {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .loan-card {
+                margin-bottom: 15px;
+            }
+            
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+            
+            .btn-group-sm .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+        }
+        
+        /* Table responsive adjustments */
+        @media (max-width: 1200px) {
+            #paidTable th, #paidTable td {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+        }
+        
+        .clickable-row {
+            cursor: pointer;
+        }
+        .clickable-row:hover {
+            background-color: rgba(0, 123, 255, 0.1) !important;
+        }
     </style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content" style="background: rgba(255,255,255,0.09);">
-                <div class="container-fluid" style="margin-top: 80px;">
+            <div id="content">
+            <div class="container-fluid">
                     
                     <!-- Header Section -->
                     <div class="d-sm-flex justify-content-between align-items-center mb-4">
@@ -336,7 +455,7 @@ unset($loan); // Break the reference
                                                 </thead>
                                                 <tbody>
                                                     <?php foreach ($paid_loans as $loan): ?>
-                                                        <tr class="<?php echo $loan['payment_status'] === 'overdue' ? 'table-warning' : 'table-success'; ?>">
+                                                        <tr class="clickable-row <?php echo $loan['payment_status'] === 'overdue' ? 'table-warning' : 'table-success'; ?>" data-loan-number="<?php echo $loan['loan_number']; ?>">
                                                             <td>
                                                                 <span class="badge bg-success"><?php echo strtoupper($loan['progress']); ?></span>
                                                             </td>
@@ -395,12 +514,12 @@ unset($loan); // Break the reference
                                                             </td>
                                                             <td>
                                                                 <div class="btn-group btn-group-sm">
-                                                                    <a href="loan_review.php?loan_id=<?php echo $loan['loan_id']; ?>" 
+                                                                    <a href="loan_review.php?loan_number=<?php echo urlencode($loan['loan_number']); ?>" 
                                                                        class="btn btn-primary" 
                                                                        title="View Loan Details">
                                                                         <i class="fas fa-eye"></i>
                                                                     </a>
-                                                                    <a href="receipt.php?loan_id=<?php echo $loan['loan_id']; ?>" 
+                                                                    <a href="receipt.php?loan_number=<?php echo urlencode($loan['loan_number']); ?>" 
                                                                        class="btn btn-success" 
                                                                        title="Generate Receipt">
                                                                         <i class="fas fa-receipt"></i>
@@ -462,12 +581,16 @@ unset($loan); // Break the reference
             console.log('Paid Loans page loaded');
             
             // Add row click functionality
-            const tableRows = document.querySelectorAll('tbody tr');
-            tableRows.forEach(row => {
-                row.addEventListener('click', function() {
-                    const loanId = this.querySelector('a.btn-primary')?.getAttribute('href')?.split('loan_id=')[1];
-                    if (loanId) {
-                        window.location.href = `loan_review.php?loan_id=${loanId}`;
+            const clickableRows = document.querySelectorAll('.clickable-row');
+            clickableRows.forEach(row => {
+                row.addEventListener('click', function(e) {
+                    // Don't trigger if user clicked on buttons
+                    if (!e.target.closest('a, button')) {
+                        const loanNumber = this.getAttribute('data-loan-number');
+                        if (loanNumber && loanNumber !== 'N/A') {
+                            const encodedLoanNumber = encodeURIComponent(loanNumber);
+                            window.location.href = `loan_review.php?loan_number=${encodedLoanNumber}`;
+                        }
                     }
                 });
             });

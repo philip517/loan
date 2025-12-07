@@ -115,14 +115,14 @@ foreach ($overdue_loans as &$loan) {
     // Calculate penalty fee: days overdue × 15
     $penalty_amount = $loan['days_overdue'] * 15;
     
-    // Update the penalty fee in the database for this loan
+    // Update the penalty fee in the database for this loan using loan_number
     $update_loan_query = "
         UPDATE loan 
         SET penalty_fee = ?
-        WHERE loan_id = ? AND status = 'approved' AND progress = 'overdue'
+        WHERE loan_number = ? AND status = 'approved' AND progress = 'overdue'
     ";
     $update_loan_stmt = $pdo->prepare($update_loan_query);
-    $update_loan_stmt->execute([$penalty_amount, $loan['loan_id']]);
+    $update_loan_stmt->execute([$penalty_amount, $loan['loan_number']]);
     
     // Update the loan array with the new penalty fee
     $loan['penalty_fee'] = $penalty_amount;
@@ -470,7 +470,7 @@ $total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                                         
                                         <div class="alert alert-warning mb-4">
                                             <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Penalty Notice:</strong> Overdue loans (progress = 'overdue') incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
+                                            <strong>Penalty Notice:</strong> Overdue loans incur a penalty of <strong>K15 per day</strong> added to the original interest amount.
                                         </div>
                                         <div class="table-responsive">
                                             <table class="table table-sm table-hover" id="overdueTable">
@@ -496,7 +496,7 @@ $total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                                                         $total_interest = $loan['interest'] + $penalty_amount;
                                                         $total_due = $loan['amount'] + $total_interest;
                                                         ?>
-                                                        <tr class="clickable-row <?php echo $loan['days_overdue'] > 30 ? 'table-danger' : 'table-warning'; ?>" data-loan-id="<?php echo $loan['loan_id']; ?>">
+                                                        <tr class="clickable-row <?php echo $loan['days_overdue'] > 30 ? 'table-danger' : 'table-warning'; ?>" data-loan-number="<?php echo $loan['loan_number']; ?>">
                                                             <td>
                                                                 <span class="status-indicator status-overdue"></span>
                                                                 <span class="overdue-badge">OVERDUE</span>
@@ -536,12 +536,12 @@ $total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                                                             </td>
                                                             <td>
                                                                 <div class="btn-group btn-group-sm">
-                                                                    <a href="loan_review.php?loan_id=<?php echo $loan['loan_id']; ?>" 
+                                                                    <a href="loan_review.php?loan_number=<?php echo urlencode($loan['loan_number']); ?>" 
                                                                        class="btn btn-primary" 
                                                                        title="View Loan Details">
                                                                         <i class="fas fa-eye"></i>
                                                                     </a>
-                                                                    <a href="message.php?loan_id=<?php echo $loan['loan_id']; ?>" 
+                                                                    <a href="message.php?loan_number=<?php echo urlencode($loan['loan_number']); ?>" 
                                                                        class="btn btn-warning" 
                                                                        title="Send Reminder">
                                                                         <i class="fas fa-envelope"></i>
@@ -617,7 +617,7 @@ $total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                                                         $total_due = $loan['amount'] + $loan['interest'];
                                                         $days_remaining = $loan['days_remaining'];
                                                         ?>
-                                                        <tr class="clickable-row" data-loan-id="<?php echo $loan['loan_id']; ?>">
+                                                        <tr class="clickable-row" data-loan-number="<?php echo $loan['loan_number']; ?>">
                                                             <td>
                                                                 <span class="status-indicator status-current"></span>
                                                                 <span class="current-badge">CURRENT</span>
@@ -652,7 +652,7 @@ $total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                                                             </td>
                                                             <td>
                                                                 <div class="btn-group btn-group-sm">
-                                                                    <a href="loan_review.php?loan_id=<?php echo $loan['loan_id']; ?>" 
+                                                                    <a href="loan_review.php?loan_number=<?php echo urlencode($loan['loan_number']); ?>" 
                                                                        class="btn btn-primary" 
                                                                        title="View Loan Details">
                                                                         <i class="fas fa-eye"></i>
@@ -714,9 +714,10 @@ $total_approved = $total_approved_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                 row.addEventListener('click', function(e) {
                     // Don't trigger if user clicked on buttons
                     if (!e.target.closest('a, button')) {
-                        const loanId = this.getAttribute('data-loan-id');
-                        if (loanId) {
-                            window.location.href = `loan_review.php?loan_id=${loanId}`;
+                        const loanNumber = this.getAttribute('data-loan-number');
+                        if (loanNumber && loanNumber !== 'N/A') {
+                            const encodedLoanNumber = encodeURIComponent(loanNumber);
+                            window.location.href = `loan_review.php?loan_number=${encodedLoanNumber}`;
                         }
                     }
                 });

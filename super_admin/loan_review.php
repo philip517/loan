@@ -1,16 +1,17 @@
 <?php 
 require 'auth_admin.php';
 require '../db_connect.php'; // include your PDO connection
+// Start the session first
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Get loan ID from URL parameter
-$loan_id = $_GET['loan_id'] ?? null;
+$loan_number = $_GET['loan_number'] ?? null;
 
-if (!$loan_id) {
-    $_SESSION['error_message'] = "No loan ID provided.";
+if (!$loan_number) {
+    $_SESSION['error_message'] = "No loan number provided.";
     header("Location: loan.php");
     exit;
 }
@@ -104,7 +105,7 @@ require 'loan_review_functions.php';
                     <?php endif; ?>
 
                     <!-- Loan Details -->
-                    <?php echo displayLoanDetails($loan, $pdo); ?>
+                    <?php echo displayLoanDetails($loan, $pdo, $loan_number); ?>
                 </div>
             </div>
 

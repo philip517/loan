@@ -660,10 +660,12 @@ $approval_rate = $total_reviews > 0 ?
                                                 </td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($loans as $loan): ?>
-                                                <tr class="clickable-row" data-loan-id="<?php echo $loan['loan_id']; ?>">
+                                            <?php foreach ($loans as $loan): 
+                                                $loan_number = $loan['actual_loan_number'] ?? $loan['loan_number'];
+                                            ?>
+                                                <tr class="clickable-row" data-loan-number="<?php echo htmlspecialchars($loan_number); ?>">
                                                     <td>
-                                                        <strong>Loan #<?php echo htmlspecialchars($loan['actual_loan_number'] ?? $loan['loan_number']); ?></strong><br>
+                                                        <strong>Loan #<?php echo htmlspecialchars($loan_number); ?></strong><br>
                                                         <small class="text-muted">
                                                             <?php 
                                                             if ($loan['loan_start_date']) {
@@ -900,8 +902,8 @@ $approval_rate = $total_reviews > 0 ?
         const clickableRows = document.querySelectorAll('.clickable-row');
         clickableRows.forEach(row => {
             row.addEventListener('click', function() {
-                const loanId = this.getAttribute('data-loan-id');
-                if (loanId) {
+                const loanNumber = this.getAttribute('data-loan-number');
+                if (loanNumber) {
                     // Add click animation
                     this.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
                     setTimeout(() => {
@@ -910,7 +912,8 @@ $approval_rate = $total_reviews > 0 ?
                     
                     // Redirect after brief delay
                     setTimeout(() => {
-                        window.location.href = `loan_review.php?loan_id=${loanId}`;
+                        const encodedLoanNumber = encodeURIComponent(loanNumber);
+                        window.location.href = `loan_review.php?loan_number=${encodedLoanNumber}`;
                     }, 200);
                 }
             });
@@ -992,10 +995,10 @@ $approval_rate = $total_reviews > 0 ?
             
             clickableRows.forEach(row => {
                 row.addEventListener('click', function() {
-                    const loanId = this.getAttribute('data-loan-id');
-                    if (loanId) {
-                        // Redirect to loan review page - adjust the URL as needed
-                        window.location.href = `loan_review.php?loan_id=${loanId}`;
+                    const loanNumber = this.getAttribute('data-loan-number');
+                    if (loanNumber) {
+                        const encodedLoanNumber = encodeURIComponent(loanNumber);
+                        window.location.href = `loan_review.php?loan_number=${encodedLoanNumber}`;
                     }
                 });
             });

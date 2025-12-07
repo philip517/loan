@@ -46,10 +46,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $topic = $_POST['topic'] ?? '';
     $message_text = $_POST['message'] ?? '';
     $type = $_POST['type'] ?? 'admin_to_user';
-    $loan_id = $_POST['loan_id'] ?? null;
+    $loan_number = $_POST['loan_number'] ?? null;
     
     if (!empty($topic) && !empty($message_text)) {
         try {
+            // Get loan_id from loan_number if provided
+            $loan_id = null;
+            if ($loan_number) {
+                $loan_stmt = $pdo->prepare("SELECT loan_id FROM loan WHERE loan_number = ?");
+                $loan_stmt->execute([$loan_number]);
+                $loan = $loan_stmt->fetch(PDO::FETCH_ASSOC);
+                if ($loan) {
+                    $loan_id = $loan['loan_id'];
+                }
+            }
+            
             $stmt = $pdo->prepare("
                 INSERT INTO message (status, topic, message_text, type, loan_id, created_at) 
                 VALUES ('sent', ?, ?, ?, ?, NOW())
@@ -267,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 };
                                             ?>
                                                 <div class="list-group-item p-3 loan-card" 
-                                                     onclick="window.location.href='loan_messages.php?loan_id=<?php echo $loan['loan_id']; ?>'">
+                                                     onclick="window.location.href='loan_messages.php?loan_number=<?php echo urlencode($loan['loan_number']); ?>'">
                                                     <div class="d-flex align-items-start">
                                                         <div class="flex-shrink-0 me-3">
                                                             <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
@@ -464,8 +475,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                            placeholder="Enter message topic" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="loan_id" class="form-label">Associated Loan (Optional)</label>
-                                    <select class="form-select" id="loan_id" name="loan_id">
+                                    <label for="loan_number" class="form-label">Associated Loan (Optional)</label>
+                                    <select class="form-select" id="loan_number" name="loan_number">
                                         <option value="">No associated loan</option>
                                       <?php
 try {
@@ -479,7 +490,7 @@ try {
     $loans = $loanStmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($loans as $loan) {
         $clientName = htmlspecialchars($loan['first_name'] . ' ' . $loan['last_name']);
-        echo "<option value=\"{$loan['loan_id']}\">Loan #{$loan['loan_number']} - {$clientName}</option>";
+        echo "<option value=\"" . htmlspecialchars($loan['loan_number']) . "\">Loan #" . htmlspecialchars($loan['loan_number']) . " - {$clientName}</option>";
     }
 } catch (PDOException $e) {
     echo "<option value=''>Error loading loans</option>";

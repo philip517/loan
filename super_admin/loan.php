@@ -114,7 +114,7 @@ function displayLoans($loans, $tableId) {
         $formatted_date = $loan_date !== 'N/A' ? date('M j, Y', strtotime($loan_date)) : 'N/A';
         
         echo "
-        <tr class='clickable-row' data-loan-id='$loan_id'>
+        <tr class='clickable-row' data-loan-number='$loan_number'>
             <td><strong>$loan_number</strong></td>
             <td>$full_name</td>
             <td>$occupation</td>
@@ -681,7 +681,7 @@ function displayLoans($loans, $tableId) {
                                                         $penalty_amount = $days_overdue * 15;
                                                         
                                                         echo "
-                                                        <tr class='clickable-row overdue-row' data-loan-id='$loan_id'>
+                                                        <tr class='clickable-row overdue-row' data-loan-number='$loan_number'>
                                                             <td>
                                                                 <strong>$loan_number</strong>
                                                                 <br><small class='text-danger'><strong>$days_overdue days overdue</strong></small>
@@ -820,7 +820,7 @@ function displayLoans($loans, $tableId) {
                                                         $formatted_date = $payment_date !== 'N/A' ? date('M j, Y', strtotime($payment_date)) : 'N/A';
                                                         
                                                         echo "
-                                                        <tr class='clickable-row paid-row' data-loan-id='$loan_id'>
+                                                        <tr class='clickable-row paid-row' data-loan-number='$loan_number'>
                                                             <td><strong>$loan_number</strong></td>
                                                             <td>$full_name</td>
                                                             <td>$occupation</td>
@@ -962,9 +962,9 @@ function displayLoans($loans, $tableId) {
             
             clickableRows.forEach(row => {
                 row.addEventListener('click', function() {
-                    const loanId = this.getAttribute('data-loan-id');
-                    if (loanId) {
-                        window.location.href = 'loan_review.php?loan_id=' + loanId;
+                    const loanNum = this.getAttribute('data-loan-number');
+                    if (loanNum) {
+                        window.location.href = 'loan_review.php?loan_number=' + loanNum;
                     }
                 });
             });

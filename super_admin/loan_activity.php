@@ -48,68 +48,170 @@ $deactivated_admins = array_filter($admin_stats, function($admin) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i&amp;display=swap">
     <link rel="stylesheet" href="assets/fonts/fontawesome-all.min.css">
     <link rel="stylesheet" href="assets/css/styles.min.css">
-    <style>
-        .clickable-row {
-            cursor: pointer;
-            transition: background-color 0.2s ease;
+ <style>
+    .clickable-row {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    .clickable-row:hover {
+        background-color: rgba(0, 123, 255, 0.1) !important;
+    }
+    .role-badge {
+        font-size: 0.75em;
+        padding: 0.25em 0.6em;
+    }
+    .status-badge {
+        font-size: 0.7em;
+        padding: 0.3em 0.6em;
+    }
+    .nav-tabs .nav-link.active {
+        font-weight: 600;
+    }
+    .tab-pane {
+        padding-top: 1rem;
+    }
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    .stats-card {
+        transition: transform 0.2s ease-in-out;
+    }
+    .stats-card:hover {
+        transform: translateY(-2px);
+    }
+    .progress {
+        height: 8px;
+        margin-top: 5px;
+    }
+    .approval-rate {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .currency-symbol {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .number-text {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    /* ========== ADDED: FIXED NAVBAR & SIDEBAR CSS ========== */
+    /* Fixed layout styles */
+    body {
+        overflow-x: hidden;
+    }
+    
+    #wrapper {
+        display: flex;
+        min-height: 100vh;
+    }
+    
+    /* Sidebar styles - FIXED */
+    .sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px !important;
+        overflow-y: auto;
+        z-index: 1030;
+    }
+    
+    /* Content wrapper - this wraps both topbar and main content */
+    #content-wrapper {
+        flex: 1;
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Top navbar - FIXED */
+    .topbar {
+        position: fixed !important;
+        top: 0;
+        left: 250px !important;
+        right: 0;
+        z-index: 1020;
+        height: 70px;
+        width: calc(100% - 250px) !important;
+    }
+    
+    /* Main content area */
+    #content {
+        margin-top: 70px; /* Space for fixed topbar */
+        padding: 20px;
+        flex: 1;
+        overflow-y: auto;
+        background: rgba(255,255,255,0.09);
+    }
+    
+    /* Remove any inline margin-top from container-fluid */
+    .container-fluid {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    
+    /* Footer adjustment */
+    footer.bg-white.sticky-footer {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .sidebar {
+            position: relative !important;
+            width: 100% !important;
+            height: auto;
         }
-        .clickable-row:hover {
-            background-color: rgba(0, 123, 255, 0.1) !important;
+        
+        #content-wrapper {
+            margin-left: 0 !important;
+            width: 100% !important;
         }
-        .role-badge {
-            font-size: 0.75em;
-            padding: 0.25em 0.6em;
+        
+        .topbar {
+            position: relative !important;
+            left: 0 !important;
+            width: 100% !important;
         }
-        .status-badge {
-            font-size: 0.7em;
-            padding: 0.3em 0.6em;
+        
+        #content {
+            margin-top: 0;
+            padding: 15px;
         }
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
+        
+        footer.bg-white.sticky-footer {
+            margin-left: 0;
+            width: 100%;
         }
-        .tab-pane {
-            padding-top: 1rem;
-        }
-        .empty-state {
-            padding: 3rem 1rem;
-            text-align: center;
-            color: #6c757d;
-        }
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
+        
         .stats-card {
-            transition: transform 0.2s ease-in-out;
+            margin-bottom: 15px;
         }
-        .stats-card:hover {
-            transform: translateY(-2px);
+        
+        .table-responsive {
+            font-size: 0.9rem;
         }
-        .progress {
-            height: 8px;
-            margin-top: 5px;
-        }
-        .approval-rate {
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .currency-symbol {
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        .number-text {
-            font-weight: 600;
-            color: #2c3e50;
-        }
-    </style>
+    }
+</style>
 </head>
 
 <body id="page-top">
     <div id="wrapper">
         <?php require 'navbar.php'; ?>
-        <div class="d-flex flex-column" id="content-wrapper">
-            <div id="content">
+        <div id="content">
+            <div class="container-fluid" style="opacity: 0.97;">
                 <div class="container-fluid" style="margin-top: 100px;">
                     <h3 class="text-dark mb-4">Admin Loan Statistics</h3>
                     
@@ -436,6 +538,57 @@ $deactivated_admins = array_filter($admin_stats, function($admin) {
     </div>
     <script src="assets/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/js/script.min.js"></script>
+    <script>
+    // Make rows clickable and redirect to user profile
+    document.addEventListener('DOMContentLoaded', function() {
+        const clickableRows = document.querySelectorAll('.clickable-row');
+        
+        clickableRows.forEach(row => {
+            row.addEventListener('click', function() {
+                const userId = this.getAttribute('data-user-id');
+                if (userId) {
+                    window.location.href = `admin_loan_activity.php?admin_id=${userId}`;
+                }
+            });
+        });
+
+        // Search functionality for active administrators
+        const activeSearch = document.querySelector('.active-search');
+        if (activeSearch) {
+            activeSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#activeTable .clickable-row');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Search functionality for deactivated administrators
+        const deactivatedSearch = document.querySelector('.deactivated-search');
+        if (deactivatedSearch) {
+            deactivatedSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#deactivatedTable .clickable-row');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
     <script>
         // Make rows clickable and redirect to user profile
         document.addEventListener('DOMContentLoaded', function() {
