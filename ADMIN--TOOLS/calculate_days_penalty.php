@@ -4,10 +4,10 @@ require '../db_connect.php';
 require 'auth_admin.php';
 
 if (isset($_POST['start_calculation'])) {
-    // Fetch all loans with their end dates
+    // Fetch all loans with their end dates - INCLUDING payment_date
     $stmt = $pdo->query("
         SELECT loan_id, loan_number, amount, loan_end_date, 
-               penalty_fee, days_remaining, status, progress 
+               penalty_fee, days_remaining, status, progress, payment_date
         FROM loan 
         WHERE loan_end_date IS NOT NULL
         ORDER BY loan_id
@@ -21,6 +21,7 @@ if (isset($_POST['start_calculation'])) {
     $marked_overdue = 0;
     $marked_current = 0;
     $marked_paid = 0;
+    $skipped_paid = 0;
     
     // Start HTML output
     echo '<!DOCTYPE html>
@@ -110,6 +111,46 @@ if (isset($_POST['start_calculation'])) {
         $current_days = $loan['days_remaining'];
         $status = $loan['status'];
         $progress = $loan['progress'];
+        $payment_date = $loan['payment_date'];
+        
+        // CHECK 1: If loan has payment_date, skip penalty calculation and mark as paid
+        if ($payment_date !== NULL && $payment_date !== '') {
+            $skipped_paid++;
+            
+            // Update progress to 'paid' if not already
+            if ($progress !== 'paid') {
+                $update_stmt = $pdo->prepare("UPDATE loan SET progress = 'paid' WHERE loan_id = ?");
+                $update_stmt->execute([$loan_id]);
+                $marked_paid++;
+                
+                echo '<div class="log paid-updated">
+                    [' . date('H:i:s') . '] ✅ Updated Loan #' . $loan_number . ' to Paid
+                    <br><strong>Loan ID:</strong> ' . $loan_id;
+                echo ' | <strong>Progress:</strong> ' . ($progress ?: 'NULL') . ' → paid';
+                echo '<br><strong>Payment Date:</strong> ' . date('M j, Y', strtotime($payment_date));
+                echo ' | <strong>End Date:</strong> ' . date('M j, Y', strtotime($end_date));
+                echo '<br><span style="color: #6f42c1;">⏭️ Skipped penalty calculation (Already paid)</span>';
+                echo '</div>';
+            } else {
+                echo '<div class="log skipped">
+                    [' . date('H:i:s') . '] ✅ Skipped Loan #' . $loan_number . '
+                    <br><strong>Status:</strong> Paid (Payment: ' . date('M j, Y', strtotime($payment_date)) . ')
+                    <br><span style="color: #6f42c1;">⏭️ Already paid - no calculation needed</span>
+                </div>';
+            }
+            
+            // Update progress bar and continue to next loan
+            echo '<script>
+                document.getElementById("progressBar").style.width = "' . $percentage . '%";
+                document.getElementById("current").textContent = "' . $processed . '";
+            </script>';
+            
+            ob_flush();
+            flush();
+            usleep(50000);
+            
+            continue; // Skip to next loan
+        }
         
         // Calculate days remaining (negative if overdue)
         $today = new DateTime();
@@ -131,7 +172,7 @@ if (isset($_POST['start_calculation'])) {
             $penalty_fee = $days_overdue * 15;
         }
         
-        // Determine progress status
+        // Determine progress status (only for non-paid loans)
         $new_progress = $progress;
         
         if ($status == 'approved') {
@@ -144,12 +185,6 @@ if (isset($_POST['start_calculation'])) {
             }
         } else if ($status == 'pending') {
             $new_progress = NULL; // pending loans don't have progress
-        }
-        
-        // Check if loan is already paid (you might have a payment_date check)
-        if ($loan['payment_date'] !== NULL) {
-            $new_progress = 'paid';
-            $marked_paid++;
         }
         
         // Prepare updates
@@ -281,15 +316,14 @@ if (isset($_POST['start_calculation'])) {
             <div class="summary-item" style="background: #ffe6e6;">Penalty Fees Updated: ' . $updated_penalty . '</div>
             <div class="summary-item" style="background: #e6f2ff;">Days Remaining Updated: ' . $updated_days . '</div>
             <div class="summary-item" style="background: #fff3e6;">Marked Overdue: ' . $marked_overdue . '</div>
-            <div class="summary-item" style="background: #e6ffe6;">Marked Current: ' . $marked_current . '</div>';
-    
-    if ($marked_paid > 0) {
-        echo '<div class="summary-item" style="background: #f0e6ff;">Marked Paid: ' . $marked_paid . '</div>';
-    }
+            <div class="summary-item" style="background: #e6ffe6;">Marked Current: ' . $marked_current . '</div>
+            <div class="summary-item" style="background: #f0e6ff;">Marked/Updated Paid: ' . $marked_paid . '</div>
+            <div class="summary-item" style="background: #f8f9fa;">Skipped Paid: ' . $skipped_paid . '</div>';
     
     echo '<br><br>
             <div style="margin-top: 10px;">
                 <strong>Total Updates Made:</strong> ' . $total_updated . ' (' . round(($total_updated / $processed) * 100, 1) . '% of loans)
+                <br><strong>Paid Loans Skipped:</strong> ' . $skipped_paid . ' (' . round(($skipped_paid / $total_loans) * 100, 1) . '%)
             </div>
         </div>
         
@@ -303,6 +337,7 @@ if (isset($_POST['start_calculation'])) {
             <ul>
                 <li>Penalty fee: K15 per day for overdue approved loans</li>
                 <li>Days remaining: Positive = days until due, Negative = days overdue</li>
+                <li>Loans with payment_date are skipped and marked as paid</li>
                 <li>Progress automatically set based on days remaining and payment status</li>
             </ul>
         </div>
@@ -312,6 +347,8 @@ if (isset($_POST['start_calculation'])) {
     
     exit;
 }
+
+// Show initial page with form
 ?>
 
 <!DOCTYPE html>
@@ -383,7 +420,9 @@ if (isset($_POST['start_calculation'])) {
                                     SUM(CASE WHEN days_remaining < 0 THEN 1 ELSE 0 END) as overdue_loans,
                                     SUM(CASE WHEN days_remaining >= 0 AND days_remaining IS NOT NULL THEN 1 ELSE 0 END) as current_loans,
                                     SUM(penalty_fee) as total_penalties,
-                                    COUNT(CASE WHEN progress = 'overdue' THEN 1 END) as marked_overdue
+                                    COUNT(CASE WHEN progress = 'overdue' THEN 1 END) as marked_overdue,
+                                    COUNT(CASE WHEN progress = 'paid' THEN 1 END) as paid_loans,
+                                    COUNT(CASE WHEN payment_date IS NOT NULL THEN 1 END) as has_payment_date
                                 FROM loan
                                 WHERE loan_end_date IS NOT NULL
                             ");
@@ -414,6 +453,18 @@ if (isset($_POST['start_calculation'])) {
                                         <h3>' . ($stats['marked_overdue'] ?? 0) . '</h3>
                                     </div>
                                 </div>';
+                            echo '<div class="col-md-6">
+                                    <div class="stats-card">
+                                        <h6>Paid Loans</h6>
+                                        <h3 style="color: #6f42c1;">' . ($stats['paid_loans'] ?? 0) . '</h3>
+                                    </div>
+                                </div>';
+                            echo '<div class="col-md-6">
+                                    <div class="stats-card">
+                                        <h6>Have Payment Date</h6>
+                                        <h3>' . ($stats['has_payment_date'] ?? 0) . '</h3>
+                                    </div>
+                                </div>';
                             echo '</div>';
                             
                         } catch (PDOException $e) {
@@ -422,10 +473,11 @@ if (isset($_POST['start_calculation'])) {
                         ?>
                         
                         <div class="formula-box">
-                            <h6>📝 Calculation Formulas:</h6>
+                            <h6>📝 Calculation Rules:</h6>
                             <ul class="mb-0">
                                 <li><strong>Days Remaining:</strong> Today's Date - Loan End Date</li>
                                 <li><strong>Penalty Fee:</strong> K15 × Days Overdue (for approved loans only)</li>
+                                <li><strong>Loans with payment_date:</strong> Skipped and marked as paid</li>
                                 <li><strong>Progress Status:</strong> Automatically set based on days remaining</li>
                             </ul>
                         </div>
@@ -434,6 +486,7 @@ if (isset($_POST['start_calculation'])) {
                             <h6>⚠️ Important Notes:</h6>
                             <ul class="mb-0">
                                 <li>Only loans with end dates will be processed</li>
+                                <li>Loans with payment_date will be skipped (treated as paid)</li>
                                 <li>Penalties only apply to approved overdue loans</li>
                                 <li>Progress status will be updated automatically</li>
                                 <li>This process may take a while for many loans</li>

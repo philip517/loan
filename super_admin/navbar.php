@@ -45,7 +45,7 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                     <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="loansDropdown">
                         <li><a class="dropdown-item" href="loan.php"><i class="fas fa-list me-2"></i>All Loans</a></li>
                         <li><a class="dropdown-item" href="loan_request.php"><i class="fas fa-hand-paper me-2"></i>Loan Requests</a></li>
-                        <li><hr class="dropdown-divider"></li>
+                        
                         <li><a class="dropdown-item" href="overdue.php"><i class="fas fa-exclamation-triangle me-2"></i>Approved Loans Summary</a></li>
                         <li><a class="dropdown-item" href="paid_loan.php"><i class="fas fa-check-circle me-2"></i>Settled Loans</a></li>
                     </ul>
@@ -68,8 +68,11 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                         <i class="fas fa-chart-line"></i><span>Financial Management</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="financeDropdown">
-                        <li><a class="dropdown-item" href="finances.php"><i class="fas fa-money-bill-wave me-2"></i>Finances</a></li>
-                        <li><a class="dropdown-item" href="loan_activity.php"><i class="fas fa-history me-2"></i>Admin Activity</a></li>
+                        <li><a class="dropdown-item" href="finance_main.php"><i class="fas fa-money-bill-wave me-2"></i>Finances</a></li>
+                        <li><a class="dropdown-item" href="finance_pending.php"><i class="fas fa-money-bill-wave me-2"></i>Pending</a></li>
+                        <li><a class="dropdown-item" href="finance_current.php"><i class="fas fa-money-bill-wave me-2"></i>Current</a></li>
+                        <li><a class="dropdown-item" href="finance_paid.php"><i class="fas fa-money-bill-wave me-2"></i>Paid</a></li>
+                        <li><a class="dropdown-item" href="finance_rejected.php"><i class="fas fa-money-bill-wave me-2"></i>Rejected</a></li>
                     </ul>
                 </li>
                 
@@ -79,10 +82,10 @@ $unread_count = $count_stmt->fetch(PDO::FETCH_ASSOC)['unread_count'];
                         <i class="fas fa-users"></i><span>User Management</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="usersDropdown">
+                        <li><a class="dropdown-item" href="loan_activity.php"><i class="fas fa-history me-2"></i>Admin Activity</a></li>
                         <li><a class="dropdown-item" href="user.php"><i class="fas fa-user-friends me-2"></i>Clients</a></li>
                         <li><a class="dropdown-item" href="table.php"><i class="fas fa-user-tie me-2"></i>Staff</a></li>
                         <li><a class="dropdown-item" href="add_user.php"><i class="fas fa-user-plus me-2"></i>Add User</a></li>
-                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>My Profile</a></li>
                     </ul>
                 </li>

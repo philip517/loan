@@ -195,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_as_paid'])) {
         }
         
         // Record this action in loan_reviews table
-        $review_id = recordLoanReview($pdo, $loan_number, $admin_id, 'marked_paid', 'Loan marked as paid on ' . $payment_date);
+        $review_id = recordLoanReview($pdo, $loan_number, $admin_id, 'paid', 'Loan marked as paid on ' . $payment_date);
         
         if ($review_id) {
             $_SESSION['success_message'] = "Loan marked as paid successfully! Payment date set to " . date('F j, Y', strtotime($payment_date)) . ". Review recorded in audit trail.";

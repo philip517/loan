@@ -47,7 +47,7 @@ if ($current_budget_balance < 0) {
 $total_earnings = $loan_stats['total_revenue'] ?? 0;
 
 // Option B: Total Amount Due (Principal + Interest + Penalties)
-$total_amount_due = $loan_stats['total_amount_due'] ?? 0;
+//$total_amount_due = $loan_stats['total_amount_due'] ?? 0;
 
 $total_interest_only = $loan_stats['total_interest_earnings'] ?? 0;
 $total_penalties_only = $loan_stats['total_penalty_earnings'] ?? 0;

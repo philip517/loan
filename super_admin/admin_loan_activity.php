@@ -682,7 +682,7 @@ $approval_rate = $total_reviews > 0 ?
                                                         <small class="text-muted"><?php echo htmlspecialchars($loan['customer_phone'] ?? 'N/A'); ?></small>
                                                     </td>
                                                     <td>
-                                                        <span class="badge amount-badge">$<?php echo number_format($loan['amount'], 2); ?></span>
+                                                        <span class="">K<?php echo number_format($loan['amount'], 2); ?></span>
                                                     </td>
                                                     <td>
                                                         <?php echo htmlspecialchars($loan['duration']); ?> weeks

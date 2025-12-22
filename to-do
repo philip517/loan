@@ -7,16 +7,29 @@ things to finish before the 10th of December
 
 -add a notification panel for the admi and the user
 
--refine code to use the loan number instead of the loan id saved in the database
 
--in the paid loan section add a penalty column to show if the loan was paid with penalties or not
+22/12/20205
+we have added five new pages 
+finance, pending, current, paid and rejected loans page, these will be used to give a summary of the loans activity and need more refinement
 
--create a man number for the admins and users
+-we have added the loan application date, this date is different from the start date as it shows the date of application , the start date shows the time/date the loan was approved and the duration count began, we need to modify the code so that all the loan dates correctly display the date whether the start date or the date of application
+
+these are in the loan review page, laon table pages and the admin activity pages 
+-need to add more refinment as to how the loans are reviewed from the above created pages 
+-need to add more refinment to the layout of the pages 
+
+
+
+need to add a printing feature to print out a loan and user details
+
+
+
+
 
 optional
 -add an online feature to show when an admin or user is online
 -improve ui for phone display (use the profile page as a guide)
-
+-create a man number for the admins and users
 
 Modifications on layout when the screen is small they are not ok
 -all loans
@@ -30,3 +43,7 @@ Mo modifications on ui
 
 done
 -add css to allow the navbar to be fixed to the side
+
+-refine code to use the loan number instead of the loan id saved in the database
+
+-in the paid loan section add a penalty column to show if the loan was paid with penalties or not
